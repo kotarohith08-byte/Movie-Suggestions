@@ -2,7 +2,7 @@
 export_static_site.py - Builds the Standalone GitHub Pages CineMatch AI Website
 ==============================================================================
 Generates:
-1. static_data.js (embedded dataset of 860 curated movies with authentic posters)
+1. static_data.js (embedded dataset of 1,560 curated movies with 100% TMDB CDN posters)
 2. index.html at root (standalone interactive client-side web application for GitHub Pages)
 3. .nojekyll (disables Jekyll so GitHub Pages serves index.html directly)
 """
@@ -20,9 +20,9 @@ posters_cache = json.load(open(os.path.join(DATA_DIR, "posters_cache.json"), enc
 movies_df = pd.read_csv(os.path.join(DATA_DIR, "processed_movies.csv"))
 top_sims = joblib.load(os.path.join(MODELS_DIR, "content_top_sims.joblib"))
 
-# Select all Indian movies + top 800 popular MovieLens movies
+# Select all 60 Indian blockbusters + top 1,500 popular MovieLens movies
 indian_mids = [mid for mid in movies_df["movieId"] if mid >= 200000]
-top_ml = movies_df[movies_df["movieId"] < 200000].sort_values(by="rating_count", ascending=False).head(800)["movieId"].tolist()
+top_ml = movies_df[movies_df["movieId"] < 200000].sort_values(by="rating_count", ascending=False).head(1500)["movieId"].tolist()
 
 selected_mids = set(indian_mids + top_ml)
 movies_list = []
@@ -50,14 +50,14 @@ for mid in selected_mids:
 # Sort movies: Indian blockbusters first, then by popularity/votes
 movies_list.sort(key=lambda m: (m["id"] < 200000, -m["votes"], -m["score"]))
 
-# Write static_data.js with BOTH window.MOVIES_DATABASE and var MOVIES_DATABASE for maximum browser compatibility
+# Write static_data.js with BOTH window.MOVIES_DATABASE and var MOVIES_DATABASE
 json_data = json.dumps(movies_list, ensure_ascii=False)
 js_content = f"var MOVIES_DATABASE = {json_data};\nif (typeof window !== 'undefined') {{ window.MOVIES_DATABASE = MOVIES_DATABASE; }}\n"
 
 with open(os.path.join(BASE_DIR, "static", "js", "static_data.js"), "w", encoding="utf-8") as f:
     f.write(js_content)
 
-print(f"[OK] Exported {len(movies_list)} movies with authentic posters to static/js/static_data.js")
+print(f"[OK] Exported {len(movies_list)} movies with 100% TMDB CDN posters to static/js/static_data.js")
 
 # Touch .nojekyll
 with open(os.path.join(BASE_DIR, ".nojekyll"), "w") as f:

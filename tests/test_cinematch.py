@@ -220,7 +220,8 @@ class TestFlaskBackendAPI(unittest.TestCase):
         # For Toy Story (1), it should redirect to the authentic poster or return 200/302
         self.assertIn(res.status_code, [200, 302])
         if res.status_code == 302:
-            self.assertIn("wikimedia.org", res.headers.get("Location", ""))
+            loc = res.headers.get("Location", "")
+            self.assertTrue("tmdb.org" in loc or "wikimedia.org" in loc)
 
     def test_api_recommendations_hybrid(self):
         res = self.client.get("/api/recommendations?algorithm=hybrid&top_n=6")
