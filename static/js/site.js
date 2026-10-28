@@ -5,14 +5,17 @@
  */
 
 (function () {
-  const MOVIES = window.MOVIES_DATABASE || [];
-  const MOVIE_MAP = new Map(MOVIES.map(m => [m.id, m]));
+  // Safe extraction of MOVIES array across all browsers
+  const MOVIES = (typeof MOVIES_DATABASE !== "undefined" && Array.isArray(MOVIES_DATABASE))
+    ? MOVIES_DATABASE
+    : ((typeof window !== "undefined" && Array.isArray(window.MOVIES_DATABASE)) ? window.MOVIES_DATABASE : []);
+
+  const MOVIE_MAP = new Map(MOVIES.map(m => [Number(m.id), m]));
 
   // State
   let activeGenre = "All";
   let activeAlgorithm = "hybrid";
   let userRatings = loadUserRatings();
-  let userPreferredGenres = new Set();
 
   // Storage helpers
   function loadUserRatings() {
@@ -25,29 +28,40 @@
 
   function saveUserRating(movieId, rating) {
     userRatings[movieId] = rating;
-    localStorage.setItem("cinematch_user_ratings", JSON.stringify(userRatings));
+    try {
+      localStorage.setItem("cinematch_user_ratings", JSON.stringify(userRatings));
+    } catch (e) {
+      console.warn("Could not persist rating:", e);
+    }
   }
 
   // Fallback SVG Generator
   function getPosterSrc(m) {
-    if (m.poster && m.poster.startsWith("http")) {
+    if (m && m.poster && typeof m.poster === "string" && m.poster.startsWith("http")) {
       return m.poster;
     }
-    // Dynamic SVG data URI
-    const title = escapeHtml(m.title.length > 20 ? m.title.slice(0, 18) + "..." : m.title);
-    const genre = m.genres[0] || "Cinema";
-    const year = m.year || "";
-    return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450"><rect width="300" height="450" fill="%23131b2c"/><rect width="300" height="450" fill="none" stroke="%238b5cf6" stroke-width="2"/><circle cx="150" cy="180" r="50" fill="%238b5cf6" opacity="0.3"/><text x="150" y="60" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="%23a78bfa" letter-spacing="2">${genre.toUpperCase()}</text><text x="150" y="240" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="800" fill="%23ffffff">${title}</text><text x="150" y="280" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="%2394a3b8">${year}</text><text x="150" y="380" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="%23fbbf24">${m.rating} ★</text></svg>`;
+    const safeTitle = escapeHtml((m && m.title ? m.title : "Movie").length > 22 ? (m.title.slice(0, 20) + "...") : (m && m.title ? m.title : "Movie"));
+    const safeGenre = (m && m.genres && m.genres[0]) ? escapeHtml(m.genres[0]) : "Cinema";
+    const safeYear = (m && m.year) ? String(m.year) : "";
+    const safeRating = (m && m.rating) ? String(m.rating) : "4.0";
+
+    return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450"><rect width="300" height="450" fill="%23131b2c"/><rect width="300" height="450" fill="none" stroke="%238b5cf6" stroke-width="2"/><circle cx="150" cy="180" r="50" fill="%238b5cf6" opacity="0.3"/><text x="150" y="60" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="%23a78bfa" letter-spacing="2">${safeGenre.toUpperCase()}</text><text x="150" y="240" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="800" fill="%23ffffff">${safeTitle}</text><text x="150" y="280" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="%2394a3b8">${safeYear}</text><text x="150" y="380" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="%23fbbf24">${safeRating} ★</text></svg>`;
   }
 
-  // Initialize
-  document.addEventListener("DOMContentLoaded", () => {
+  // Initialize on load
+  function init() {
     initGenres();
     initSearch();
     initAlgoTabs();
     initModals();
     renderAllSections();
-  });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 
   function renderAllSections() {
     renderPersonalized();
@@ -60,12 +74,16 @@
   function initGenres() {
     const genreCounts = {};
     MOVIES.forEach(m => {
-      m.genres.forEach(g => genreCounts[g] = (genreCounts[g] || 0) + 1);
+      (m.genres || []).forEach(g => {
+        if (g && g !== "(no genres listed)") {
+          genreCounts[g] = (genreCounts[g] || 0) + 1;
+        }
+      });
     });
 
     const sortedGenres = Object.entries(genreCounts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 14);
+      .slice(0, 16);
 
     const wrapper = document.getElementById("genreChipsWrapper");
     if (!wrapper) return;
@@ -73,8 +91,8 @@
     wrapper.innerHTML = `
       <button type="button" class="genre-chip active" data-genre="All">All Genres</button>
       ${sortedGenres.map(([g, c]) => `
-        <button type="button" class="genre-chip" data-genre="${g}">
-          ${g} <span class="chip-count">${c}</span>
+        <button type="button" class="genre-chip" data-genre="${escapeHtml(g)}">
+          ${escapeHtml(g)} <span class="chip-count">${c}</span>
         </button>
       `).join("")}
     `;
@@ -84,12 +102,13 @@
       if (!chip) return;
       wrapper.querySelectorAll(".genre-chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
-      activeGenre = chip.dataset.genre;
+      activeGenre = chip.dataset.genre || "All";
 
       const status = document.getElementById("genreFilterStatus");
       if (status) status.textContent = activeGenre === "All" ? "Showing All" : `Filtered: ${activeGenre}`;
 
       renderPersonalized();
+      renderIndianSpotlight();
       renderPopular();
     });
   }
@@ -102,7 +121,7 @@
     const clearBtn = document.getElementById("clearSearchBtn");
 
     function doSearch(query) {
-      const q = query.trim().toLowerCase();
+      const q = (query || "").trim().toLowerCase();
       const resultsSection = document.getElementById("searchResultsSection");
       const grid = document.getElementById("searchResultsGrid");
       const countEl = document.getElementById("searchResultsCount");
@@ -113,17 +132,17 @@
       }
 
       const matches = MOVIES.filter(m => {
-        return m.title.toLowerCase().includes(q) ||
-          m.full_title.toLowerCase().includes(q) ||
-          m.genres.some(g => g.toLowerCase().includes(q)) ||
-          (m.year && String(m.year) === q);
+        const title = (m.title || "").toLowerCase();
+        const fullTitle = (m.full_title || m.title || "").toLowerCase();
+        const genres = (m.genres || []).map(g => g.toLowerCase());
+        const year = m.year ? String(m.year) : "";
+        return title.includes(q) || fullTitle.includes(q) || genres.some(g => g.includes(q)) || year === q;
       });
 
       if (resultsSection) resultsSection.classList.remove("hidden");
       if (countEl) countEl.textContent = `Found ${matches.length} matching movies for "${query}"`;
       if (grid) renderMovieCards(grid, matches.slice(0, 36));
 
-      // Scroll to search
       resultsSection.scrollIntoView({ behavior: "smooth" });
     }
 
@@ -138,6 +157,9 @@
       navInput.addEventListener("input", (e) => {
         if (heroInput) heroInput.value = e.target.value;
         doSearch(e.target.value);
+      });
+      navInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") doSearch(navInput.value);
       });
     }
 
@@ -174,7 +196,10 @@
     let candidates = MOVIES.filter(m => !ratedIds.has(m.id));
 
     if (activeGenre !== "All") {
-      candidates = candidates.filter(m => m.genres.includes(activeGenre));
+      const filtered = candidates.filter(m => (m.genres || []).includes(activeGenre));
+      if (filtered.length > 0) {
+        candidates = filtered;
+      }
     }
 
     const ratedList = Object.entries(userRatings).map(([id, r]) => ({
@@ -183,12 +208,11 @@
     })).filter(x => x.movie);
 
     if (algorithm === "popular") {
-      return candidates.sort((a, b) => (b.votes * Math.pow(b.score, 1.5)) - (a.votes * Math.pow(a.score, 1.5))).slice(0, limit);
+      return candidates.slice().sort((a, b) => (b.votes * Math.pow(b.score, 1.5)) - (a.votes * Math.pow(a.score, 1.5))).slice(0, limit);
     }
 
     if (algorithm === "content" && ratedList.length > 0) {
-      // Content based on highest rated movie
-      const highest = ratedList.sort((a, b) => b.rating - a.rating)[0];
+      const highest = ratedList.slice().sort((a, b) => b.rating - a.rating)[0];
       const simIds = new Set(highest.movie.sims || []);
       const similarCandidates = candidates.filter(m => simIds.has(m.id));
       if (similarCandidates.length >= 4) {
@@ -198,10 +222,9 @@
 
     if (algorithm === "collab" || algorithm === "hybrid") {
       if (ratedList.length > 0) {
-        // Collect similarity pools
         const poolScores = new Map();
         ratedList.forEach(({ movie, rating }) => {
-          const weight = (rating - 2.5) / 2.5; // weight between 0 and 1
+          const weight = (rating - 2.5) / 2.5;
           (movie.sims || []).forEach(simId => {
             if (!ratedIds.has(simId)) {
               poolScores.set(simId, (poolScores.get(simId) || 0) + (1.0 * weight));
@@ -209,19 +232,22 @@
           });
         });
 
-        candidates.forEach(m => {
+        const scored = candidates.map(m => {
           const simBonus = poolScores.get(m.id) || 0;
           const quality = (m.score - 1.0) / 4.0;
-          m._calcScore = (0.55 * simBonus) + (0.45 * quality);
+          return {
+            ...m,
+            _calcScore: (0.55 * simBonus) + (0.45 * quality)
+          };
         });
 
-        candidates.sort((a, b) => (b._calcScore || 0) - (a._calcScore || 0));
-        return candidates.slice(0, limit);
+        scored.sort((a, b) => (b._calcScore || 0) - (a._calcScore || 0));
+        return scored.slice(0, limit);
       }
     }
 
-    // Default Cold-Start: Top Bayesian weighted score
-    return candidates.sort((a, b) => b.score - a.score).slice(0, limit);
+    // Default: Top Bayesian weighted score
+    return candidates.slice().sort((a, b) => b.score - a.score).slice(0, limit);
   }
 
   function renderPersonalized() {
@@ -234,8 +260,13 @@
   function renderIndianSpotlight() {
     const grid = document.getElementById("indianGrid");
     if (!grid) return;
-    // Tollywood (200001 - 200030) and Bollywood (200031 - 200060)
-    const indian = MOVIES.filter(m => m.id >= 200000).sort((a, b) => b.score - a.score);
+    let indian = MOVIES.filter(m => m.id >= 200000).slice().sort((a, b) => b.score - a.score);
+    if (activeGenre !== "All") {
+      const filtered = indian.filter(m => (m.genres || []).includes(activeGenre));
+      if (filtered.length > 0) {
+        indian = filtered;
+      }
+    }
     renderMovieCards(grid, indian.slice(0, 12));
   }
 
@@ -244,7 +275,10 @@
     if (!grid) return;
     let popular = MOVIES.slice().sort((a, b) => (b.votes * Math.pow(b.score, 1.5)) - (a.votes * Math.pow(a.score, 1.5)));
     if (activeGenre !== "All") {
-      popular = popular.filter(m => m.genres.includes(activeGenre));
+      const filtered = popular.filter(m => (m.genres || []).includes(activeGenre));
+      if (filtered.length > 0) {
+        popular = filtered;
+      }
     }
     renderMovieCards(grid, popular.slice(0, 12));
   }
@@ -317,7 +351,7 @@
             </h3>
 
             <div class="movie-genres">
-              ${m.genres.slice(0, 3).map(g => `<span class="genre-pill">${escapeHtml(g)}</span>`).join("")}
+              ${(m.genres || []).slice(0, 3).map(g => `<span class="genre-pill">${escapeHtml(g)}</span>`).join("")}
             </div>
 
             <div class="card-actions">
@@ -395,7 +429,7 @@
             </div>
             <div class="detail-info-wrap">
               <div class="detail-genres">
-                ${movie.genres.map(g => `<span class="genre-pill large-pill">${escapeHtml(g)}</span>`).join("")}
+                ${(movie.genres || []).map(g => `<span class="genre-pill large-pill">${escapeHtml(g)}</span>`).join("")}
               </div>
               <div class="detail-stats-grid">
                 <div class="stat-card">

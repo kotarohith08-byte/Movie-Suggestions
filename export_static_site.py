@@ -2,7 +2,7 @@
 export_static_site.py - Builds the Standalone GitHub Pages CineMatch AI Website
 ==============================================================================
 Generates:
-1. static_data.js (embedded dataset of 560 curated movies with authentic posters)
+1. static_data.js (embedded dataset of 860 curated movies with authentic posters)
 2. index.html at root (standalone interactive client-side web application for GitHub Pages)
 3. .nojekyll (disables Jekyll so GitHub Pages serves index.html directly)
 """
@@ -20,9 +20,9 @@ posters_cache = json.load(open(os.path.join(DATA_DIR, "posters_cache.json"), enc
 movies_df = pd.read_csv(os.path.join(DATA_DIR, "processed_movies.csv"))
 top_sims = joblib.load(os.path.join(MODELS_DIR, "content_top_sims.joblib"))
 
-# Select all Indian movies + top 500 popular MovieLens movies
+# Select all Indian movies + top 800 popular MovieLens movies
 indian_mids = [mid for mid in movies_df["movieId"] if mid >= 200000]
-top_ml = movies_df[movies_df["movieId"] < 200000].sort_values(by="rating_count", ascending=False).head(500)["movieId"].tolist()
+top_ml = movies_df[movies_df["movieId"] < 200000].sort_values(by="rating_count", ascending=False).head(800)["movieId"].tolist()
 
 selected_mids = set(indian_mids + top_ml)
 movies_list = []
@@ -37,17 +37,23 @@ for mid in selected_mids:
     movies_list.append({
         "id": mid_int,
         "title": str(row["clean_title"]),
+        "full_title": str(row["title"]),
         "year": int(row["year"]) if pd.notnull(row["year"]) else None,
         "genres": genres,
-        "rating": float(row["rating_mean"]),
+        "rating": float(round(row["rating_mean"], 2)),
         "votes": int(row["rating_count"]),
-        "score": float(row["weighted_score"]),
+        "score": float(round(row["weighted_score"], 2)),
         "poster": poster,
         "sims": sims
     })
 
-# Write static_data.js
-js_content = f"const MOVIES_DATABASE = {json.dumps(movies_list, ensure_ascii=False)};\n"
+# Sort movies: Indian blockbusters first, then by popularity/votes
+movies_list.sort(key=lambda m: (m["id"] < 200000, -m["votes"], -m["score"]))
+
+# Write static_data.js with BOTH window.MOVIES_DATABASE and var MOVIES_DATABASE for maximum browser compatibility
+json_data = json.dumps(movies_list, ensure_ascii=False)
+js_content = f"var MOVIES_DATABASE = {json_data};\nif (typeof window !== 'undefined') {{ window.MOVIES_DATABASE = MOVIES_DATABASE; }}\n"
+
 with open(os.path.join(BASE_DIR, "static", "js", "static_data.js"), "w", encoding="utf-8") as f:
     f.write(js_content)
 
