@@ -185,13 +185,26 @@
     <section class="section-container" id="indian">
       <div class="section-header">
         <div>
-          <div class="section-badge">Indian Cinema Spotlight</div>
-          <h2 class="section-title">Tollywood & Bollywood (Post-2011)</h2>
-          <p class="section-desc">Acclaimed blockbusters from 2012 to 2026 with authentic theatrical posters.</p>
+          <div class="section-badge">Indian Cinema Spotlight (2012 - 2026)</div>
+          <h2 class="section-title">Tollywood &amp; Bollywood Masterpieces</h2>
+          <p class="section-desc">Over 245+ Telugu blockbusters and iconic Hindi cinema with authentic TMDB theatrical posters.</p>
+        </div>
+
+        <!-- Industry Filter Tabs -->
+        <div class="algorithm-tabs" id="indianTabs">
+          <button class="tab-btn" data-industry="all">All Indian (275+)</button>
+          <button class="tab-btn active" data-industry="Tollywood">🎬 Tollywood (245+)</button>
+          <button class="tab-btn" data-industry="Bollywood">🎭 Bollywood</button>
         </div>
       </div>
 
       <div class="movie-grid" id="indianGrid"></div>
+      
+      <div style="text-align: center; margin-top: 24px;">
+        <button id="loadMoreIndianBtn" class="btn-clear-filters" style="padding: 10px 24px; font-size: 0.95rem; cursor: pointer; border-radius: 8px;">
+          ⬇ Load More Tollywood Movies
+        </button>
+      </div>
     </section>
 
     <!-- Trending / Popular Section -->
@@ -355,7 +368,7 @@
   </footer>
 
   <!-- Embedded Dataset & Client-Side Engine -->
-  <script src="static/js/static_data.js?v=20261028-tmdb-posters"></script>
-  <script src="static/js/site.js?v=20261028-tmdb-posters"></script>
+  <script src="static/js/static_data.js?v=20261028-tollywood-245"></script>
+  <script src="static/js/site.js?v=20261028-tollywood-245"></script>
 </body>
 </html>

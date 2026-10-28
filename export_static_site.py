@@ -2,7 +2,7 @@
 export_static_site.py - Builds the Standalone GitHub Pages CineMatch AI Website
 ==============================================================================
 Generates:
-1. static_data.js (embedded dataset of 1,560 curated movies with 100% TMDB CDN posters)
+1. static_data.js (embedded dataset of 1,775 curated movies including 245+ Tollywood blockbusters with 100% TMDB CDN posters)
 2. index.html at root (standalone interactive client-side web application for GitHub Pages)
 3. .nojekyll (disables Jekyll so GitHub Pages serves index.html directly)
 """
@@ -20,7 +20,7 @@ posters_cache = json.load(open(os.path.join(DATA_DIR, "posters_cache.json"), enc
 movies_df = pd.read_csv(os.path.join(DATA_DIR, "processed_movies.csv"))
 top_sims = joblib.load(os.path.join(MODELS_DIR, "content_top_sims.joblib"))
 
-# Select all 60 Indian blockbusters + top 1,500 popular MovieLens movies
+# Select all 275 Indian movies (245 Tollywood + 30 Bollywood) + top 1,500 popular MovieLens movies
 indian_mids = [mid for mid in movies_df["movieId"] if mid >= 200000]
 top_ml = movies_df[movies_df["movieId"] < 200000].sort_values(by="rating_count", ascending=False).head(1500)["movieId"].tolist()
 
@@ -34,6 +34,10 @@ for mid in selected_mids:
     poster = posters_cache.get(str(mid_int)) or ""
     sims = [s[0] for s in top_sims.get(mid_int, [])[:8] if s[0] in selected_mids]
 
+    # Tag language: Tollywood (Telugu) or Bollywood (Hindi) or Hollywood/International
+    is_tollywood = bool((200001 <= mid_int <= 200030) or (mid_int >= 200061))
+    is_bollywood = bool(200031 <= mid_int <= 200060)
+
     movies_list.append({
         "id": mid_int,
         "title": str(row["clean_title"]),
@@ -44,10 +48,11 @@ for mid in selected_mids:
         "votes": int(row["rating_count"]),
         "score": float(round(row["weighted_score"], 2)),
         "poster": poster,
-        "sims": sims
+        "sims": sims,
+        "industry": "Tollywood" if is_tollywood else ("Bollywood" if is_bollywood else "Global")
     })
 
-# Sort movies: Indian blockbusters first, then by popularity/votes
+# Sort movies: Tollywood & Indian blockbusters first, then by popularity/votes
 movies_list.sort(key=lambda m: (m["id"] < 200000, -m["votes"], -m["score"]))
 
 # Write static_data.js with BOTH window.MOVIES_DATABASE and var MOVIES_DATABASE
@@ -57,7 +62,8 @@ js_content = f"var MOVIES_DATABASE = {json_data};\nif (typeof window !== 'undefi
 with open(os.path.join(BASE_DIR, "static", "js", "static_data.js"), "w", encoding="utf-8") as f:
     f.write(js_content)
 
-print(f"[OK] Exported {len(movies_list)} movies with 100% TMDB CDN posters to static/js/static_data.js")
+tollywood_count = sum(1 for m in movies_list if m["industry"] == "Tollywood")
+print(f"[OK] Exported {len(movies_list)} movies total ({tollywood_count} Tollywood movies with 100% TMDB CDN posters) to static/js/static_data.js")
 
 # Touch .nojekyll
 with open(os.path.join(BASE_DIR, ".nojekyll"), "w") as f:

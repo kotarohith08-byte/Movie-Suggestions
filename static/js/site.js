@@ -15,6 +15,8 @@
   // State
   let activeGenre = "All";
   let activeAlgorithm = "hybrid";
+  let activeIndustry = "Tollywood";
+  let indianDisplayCount = 24;
   let userRatings = loadUserRatings();
 
   // Storage helpers
@@ -53,6 +55,7 @@
     initGenres();
     initSearch();
     initAlgoTabs();
+    initIndianTabs();
     initModals();
     renderAllSections();
   }
@@ -190,6 +193,28 @@
     });
   }
 
+  function initIndianTabs() {
+    const tabs = document.querySelectorAll("#indianTabs .tab-btn");
+    const loadMoreBtn = document.getElementById("loadMoreIndianBtn");
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        activeIndustry = tab.dataset.industry || "all";
+        indianDisplayCount = 24;
+        renderIndianSpotlight();
+      });
+    });
+
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", () => {
+        indianDisplayCount += 24;
+        renderIndianSpotlight();
+      });
+    }
+  }
+
   // --- 4. Recommendations Engine ---
   function getRecommendations(algorithm = "hybrid", limit = 8) {
     const ratedIds = new Set(Object.keys(userRatings).map(Number));
@@ -259,15 +284,38 @@
 
   function renderIndianSpotlight() {
     const grid = document.getElementById("indianGrid");
+    const loadMoreBtn = document.getElementById("loadMoreIndianBtn");
     if (!grid) return;
-    let indian = MOVIES.filter(m => m.id >= 200000).slice().sort((a, b) => b.score - a.score);
+
+    let pool = MOVIES.filter(m => {
+      if (m.id < 200000) return false;
+      if (activeIndustry === "Tollywood") {
+        return m.industry === "Tollywood" || (200001 <= m.id && m.id <= 200030) || m.id >= 200061;
+      }
+      if (activeIndustry === "Bollywood") {
+        return m.industry === "Bollywood" || (200031 <= m.id && m.id <= 200060);
+      }
+      return true;
+    }).slice().sort((a, b) => b.score - a.score);
+
     if (activeGenre !== "All") {
-      const filtered = indian.filter(m => (m.genres || []).includes(activeGenre));
+      const filtered = pool.filter(m => (m.genres || []).includes(activeGenre));
       if (filtered.length > 0) {
-        indian = filtered;
+        pool = filtered;
       }
     }
-    renderMovieCards(grid, indian.slice(0, 12));
+
+    renderMovieCards(grid, pool.slice(0, indianDisplayCount));
+
+    if (loadMoreBtn) {
+      if (indianDisplayCount >= pool.length) {
+        loadMoreBtn.style.display = "none";
+      } else {
+        loadMoreBtn.style.display = "inline-block";
+        const indName = activeIndustry === "all" ? "Indian" : activeIndustry;
+        loadMoreBtn.textContent = `⬇ Load More ${indName} Movies (${pool.length - indianDisplayCount} remaining)`;
+      }
+    }
   }
 
   function renderPopular() {
