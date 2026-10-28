@@ -24,8 +24,20 @@ app.secret_key = os.environ.get("SECRET_KEY", "cinematch-ai-secret-key-productio
 # Initialize database schema
 db.init_db()
 
-# Initialize recommender singleton
+# Load recommender singleton
 recommender = get_recommender()
+
+# Load TMDB ID map for instant authentic poster lookups
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "8265bd1679663a7ea12ac168da84d2e8")
+tmdb_map = {}
+links_path = os.path.join(BASE_DIR, "data", "links.csv")
+if os.path.exists(links_path):
+    try:
+        import pandas as pd
+        _ldf = pd.read_csv(links_path).dropna(subset=["movieId", "tmdbId"])
+        tmdb_map = dict(zip(_ldf["movieId"].astype(int), _ldf["tmdbId"].astype(int)))
+    except Exception as e:
+        print(f"[!] Warning reading links.csv: {e}")
 
 # Genre color palette dictionary for SVG poster generator
 GENRE_PALETTES = {
@@ -403,20 +415,37 @@ def movie_poster(movie_id: int):
         if cached_url:
             return redirect(cached_url, code=302)
 
-        # Attempt on-demand Wikipedia lookup for un-cached movie
-        movie = recommender.get_movie_details(movie_id)
-        if movie:
+        # On-demand lookup: 1. TMDB -> 2. Wikipedia
+        found_url = None
+        t_id = tmdb_map.get(movie_id)
+        if t_id:
             try:
-                from fetch_posters import fetch_poster_from_wikipedia, save_posters_cache
-                found_url = fetch_poster_from_wikipedia(movie["clean_title"], movie.get("year"))
-                if found_url:
-                    recommender.posters_cache[mid_str] = found_url
-                    movie["poster_url"] = found_url
-                    movie["has_authentic_poster"] = True
-                    save_posters_cache(recommender.posters_cache)
-                    return redirect(found_url, code=302)
+                import requests
+                r = requests.get(f"https://api.themoviedb.org/3/movie/{t_id}?api_key={TMDB_API_KEY}", timeout=2.5)
+                if r.status_code == 200:
+                    p = r.json().get("poster_path")
+                    if p:
+                        found_url = f"https://image.tmdb.org/t/p/w500{p}"
             except Exception:
                 pass
+
+        if not found_url:
+            movie = recommender.get_movie_details(movie_id)
+            if movie:
+                try:
+                    from fetch_posters import fetch_poster_from_wikipedia
+                    found_url = fetch_poster_from_wikipedia(movie["clean_title"], movie.get("year"))
+                except Exception:
+                    pass
+
+        if found_url:
+            recommender.posters_cache[mid_str] = found_url
+            try:
+                from populate_all_posters import save_cache
+                save_cache(recommender.posters_cache)
+            except Exception:
+                pass
+            return redirect(found_url, code=302)
 
     movie = recommender.get_movie_details(movie_id)
     if not movie:
