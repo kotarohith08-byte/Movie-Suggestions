@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Movies Similar to {{ target_movie.clean_title }} - CineMatch AI{% endblock %}
+
+{% block content %}
+<div class="search-page-container">
+  <div class="search-hero">
+    <div class="section-badge">Content-Based Filtering</div>
+    <h1>Movies Similar to "{{ target_movie.clean_title }}"</h1>
+    <p>
+      Calculated using <strong>TF-IDF & Cosine Similarity</strong> over genres ({{ target_movie.genres_str }}),
+      user-applied tags, and title semantics.
+    </p>
+    <div class="hero-actions-row">
+      <a href="{{ url_for('movie_details_page', movie_id=target_movie.movieId) }}" class="btn-primary">
+        &larr; View {{ target_movie.clean_title }} Details
+      </a>
+    </div>
+  </div>
+
+  <div class="movie-grid">
+    {% for movie in similar_movies %}
+    <div class="movie-card" data-movie-id="{{ movie.movieId }}">
+      <div class="card-media">
+        <img src="{{ movie.poster_url }}" alt="{{ movie.clean_title }}" loading="lazy" class="movie-poster" onerror="if(this.src.indexOf('fallback=svg')===-1){this.src='/poster/{{ movie.movieId }}?fallback=svg';}">
+        <div class="match-badge">
+          <span class="match-val">{{ movie.match_percentage }}%</span> Match
+        </div>
+        <button 
+          class="btn-quick-rate" 
+          data-movie-id="{{ movie.movieId }}" 
+          data-title="{{ movie.clean_title }}"
+          title="Rate this movie"
+        >
+          ★ Rate
+        </button>
+      </div>
+
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="movie-year">{{ movie.year or 'N/A' }}</span>
+          <span class="movie-rating-badge">
+            ★ {{ movie.rating_mean }} <span class="vote-count">({{ movie.rating_count }})</span>
+          </span>
+        </div>
+
+        <h3 class="movie-title">
+          <a href="{{ url_for('movie_details_page', movie_id=movie.movieId) }}" title="{{ movie.clean_title }}">
+            {{ movie.clean_title }}
+          </a>
+        </h3>
+
+        <div class="movie-genres">
+          {% for g in movie.genres[:3] %}
+          <span class="genre-pill">{{ g }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="rec-reason">
+          <span class="reason-icon">💡</span>
+          <span class="reason-text">{{ movie.recommendation_reason }}</span>
+        </div>
+
+        <div class="card-actions">
+          <a href="{{ url_for('movie_details_page', movie_id=movie.movieId) }}" class="btn-card-details">
+            Details
+          </a>
+          <a href="{{ url_for('recommend_similar_movies', movie_id=movie.movieId) }}" class="btn-card-similar">
+            Similar
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CineMatch AI - AI-Powered Movie Recommendation System{% endblock %}</title>
+  <meta name="description" content="Discover movies you will love using machine learning, content-based similarity, and collaborative filtering.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js for ML metrics visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- CineMatch Styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-cinematic text-slate-100">
+
+  <!-- Navigation Bar -->
+  <header class="navbar-wrapper">
+    <div class="nav-container">
+      <a href="{{ url_for('index') }}" class="brand-logo">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </div>
+        <span class="brand-name">CineMatch<span class="text-accent">AI</span></span>
+      </a>
+
+      <!-- Quick Search Bar in Nav -->
+      <form action="{{ url_for('search_page') }}" method="GET" class="nav-search-form">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input 
+          type="text" 
+          name="q" 
+          placeholder="Search 9,700+ movies (e.g., Matrix, Inception)..." 
+          value="{{ request.args.get('q', '') }}" 
+          class="nav-search-input"
+          autocomplete="off"
+        >
+      </form>
+
+      <!-- Nav Links & Profile -->
+      <nav class="nav-actions">
+        <a href="{{ url_for('index') }}#personalized" class="nav-link">Personalized</a>
+        <a href="{{ url_for('index') }}#popular" class="nav-link">Trending</a>
+        <a href="{{ url_for('index') }}#genres" class="nav-link">Genres</a>
+        <button id="openMetricsBtn" class="btn-metrics" title="View ML Model Architecture & Evaluation Metrics">
+          <span class="status-dot"></span> ML Metrics
+        </button>
+
+        <!-- User Profile Dropdown/Switch -->
+        <div class="user-pill" id="userPill">
+          <span class="avatar">👤</span>
+          <span class="user-id-text" id="activeUserIdDisplay">{{ session.get('user_id', 'Guest') }}</span>
+          <button class="btn-switch-user" id="switchUserBtn" title="Switch User Persona">⇄</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Flash Toast Notifications -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Main Content Block -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ML Evaluation & Architecture Modal -->
+  <div id="metricsModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-badge">Machine Learning Engine</span>
+          <h2>Model Evaluation & System Architecture</h2>
+        </div>
+        <button class="modal-close" id="closeMetricsBtn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <span class="metric-label">Rating Prediction RMSE</span>
+            <span class="metric-value text-accent" id="metricRmse">0.9259</span>
+            <span class="metric-desc">Root Mean Squared Error on test set</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Mean Absolute Error (MAE)</span>
+            <span class="metric-value text-cyan" id="metricMae">0.7139</span>
+            <span class="metric-desc">Average absolute rating deviation</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Precision@10</span>
+            <span class="metric-value text-green" id="metricPrecision">63.6%</span>
+            <span class="metric-desc">Relevant items in Top 10 recommendations</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">NDCG@10</span>
+            <span class="metric-value text-purple" id="metricNdcg">0.8536</span>
+            <span class="metric-desc">Normalized Discounted Cumulative Gain</span>
+          </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="chart-wrapper">
+          <h3>Algorithm Performance Comparison</h3>
+          <canvas id="metricsChart" height="180"></canvas>
+        </div>
+
+        <div class="algorithms-comparison">
+          <div class="algo-card">
+            <h4>Content-Based Filtering</h4>
+            <p>Uses <strong>TF-IDF vectorization</strong> with sublinear term-frequency and n-grams over movie genres, plot tags, and keywords. Measures similarity via <strong>Cosine Similarity</strong>.</p>
+            <span class="badge-tag">Zero Cold-Start for New Movies</span>
+          </div>
+          <div class="algo-card">
+            <h4>Collaborative Filtering</h4>
+            <p>Applies <strong>TruncatedSVD Matrix Factorization</strong> (30 latent factors) on user-movie ratings with user-mean centering and folding-in projections.</p>
+            <span class="badge-tag">Learns Latent Cinematic Taste</span>
+          </div>
+          <div class="algo-card active-card">
+            <h4>Hybrid Recommendation Engine</h4>
+            <p>Dynamic ensemble combining Content-based affinity, SVD collaborative predictions, user preferred genres matching, and Bayesian quality scores.</p>
+            <span class="badge-tag active-tag">Production Default</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Switch Modal -->
+  <div id="userModal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3>Switch User Profile</h3>
+        <button class="modal-close" id="closeUserModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-subtext">Select a pre-existing MovieLens user (1-610) or create a custom profile to test cold-start vs mature recommendation behavior:</p>
+        <div class="quick-personas">
+          <button class="btn-persona" data-uid="user_guest">Guest User (Cold-Start)</button>
+          <button class="btn-persona" data-uid="1">MovieLens User #1 (Classic Sci-Fi Fan)</button>
+          <button class="btn-persona" data-uid="15">MovieLens User #15 (Action & Thriller)</button>
+          <button class="btn-persona" data-uid="414">MovieLens User #414 (Power User: 2,698 ratings)</button>
+        </div>
+        <form id="customUserForm" class="custom-user-form">
+          <label for="customUserIdInput">Or enter custom User ID:</label>
+          <div class="input-row">
+            <input type="text" id="customUserIdInput" placeholder="e.g. user_alice" required>
+            <button type="submit" class="btn-primary">Apply</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rating Interactive Modal -->
+  <div id="ratingModal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3 id="ratingModalTitle">Rate Movie</h3>
+        <button class="modal-close" id="closeRatingModalBtn">&times;</button>
+      </div>
+      <div class="modal-body text-center">
+        <p id="ratingModalSubtitle" class="text-slate-400">Select your rating on a scale of 1 to 5 stars:</p>
+        <div class="star-rating-container" id="modalStars">
+          <button class="star-btn" data-val="1">★</button>
+          <button class="star-btn" data-val="2">★</button>
+          <button class="star-btn" data-val="3">★</button>
+          <button class="star-btn" data-val="4">★</button>
+          <button class="star-btn" data-val="5">★</button>
+        </div>
+        <div class="rating-value-badge" id="modalRatingText">Click a star to rate</div>
+        <input type="hidden" id="modalMovieId" value="">
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-col">
+        <span class="footer-logo">CineMatch<span class="text-accent">AI</span></span>
+        <p>AI-Powered Movie Recommendation System built with Flask, Scikit-learn, TF-IDF, and Matrix Factorization.</p>
+        <p class="dataset-attr">Data source: MovieLens 100K Dataset by GroupLens Research at University of Minnesota.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Navigation</h4>
+        <ul>
+          <li><a href="{{ url_for('index') }}">Home Discovery</a></li>
+          <li><a href="{{ url_for('search_page') }}">Search & Browse</a></li>
+          <li><a href="{{ url_for('index') }}#genres">Genre Catalog</a></li>
+          <li><a href="{{ url_for('api_metrics') }}" target="_blank">Raw Metrics API</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>System Status</h4>
+        <div class="status-item">
+          <span class="status-indicator"></span> 9,742 Movies Indexed
+        </div>
+        <div class="status-item">
+          <span class="status-indicator"></span> 100,836 Ratings Analyzed
+        </div>
+        <div class="status-item">
+          <span class="status-indicator"></span> SVD Latent Space (30D)
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; CineMatch AI. Local offline-ready recommendation engine.</p>
+    </div>
+  </footer>
+
+  <!-- Core Script -->
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

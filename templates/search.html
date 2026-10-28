@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Search Movies - CineMatch AI{% endblock %}
+
+{% block content %}
+<div class="search-page-container">
+  <!-- Search Controls Bar -->
+  <div class="search-hero">
+    <h1>Search & Filter Movies</h1>
+    <p>Search across 9,742 movies in the MovieLens catalog with instant genre and release year filters.</p>
+
+    <form action="{{ url_for('search_page') }}" method="GET" class="filter-bar-form">
+      <div class="filter-input-wrap">
+        <label for="qInput">Title Query:</label>
+        <input 
+          type="text" 
+          id="qInput"
+          name="q" 
+          value="{{ query }}" 
+          placeholder="e.g. Star Wars, Lord of the Rings, Batman..."
+          class="filter-text-input"
+        >
+      </div>
+
+      <div class="filter-select-wrap">
+        <label for="genreSelect">Genre:</label>
+        <select name="genre" id="genreSelect" class="filter-select">
+          <option value="All" {% if selected_genre == 'All' %}selected{% endif %}>All Genres</option>
+          {% for g in genres %}
+          <option value="{{ g.name }}" {% if selected_genre == g.name %}selected{% endif %}>
+            {{ g.name }} ({{ g.count }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-input-wrap small-wrap">
+        <label for="yearInput">Release Year:</label>
+        <input 
+          type="number" 
+          id="yearInput"
+          name="year" 
+          value="{{ selected_year }}" 
+          placeholder="e.g. 1999"
+          min="1900" 
+          max="2030"
+          class="filter-text-input"
+        >
+      </div>
+
+      <div class="filter-btn-wrap">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn-primary search-submit-btn">Filter Movies</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Search Results Header -->
+  <div class="results-meta-bar">
+    <div class="results-count-text">
+      Showing <strong>{{ results_count }}</strong> movies 
+      {% if query %}for "<em>{{ query }}</em>"{% endif %}
+      {% if selected_genre and selected_genre != 'All' %}in <strong>{{ selected_genre }}</strong>{% endif %}
+      {% if selected_year %}from <strong>{{ selected_year }}</strong>{% endif %}
+    </div>
+    {% if query or (selected_genre and selected_genre != 'All') or selected_year %}
+    <a href="{{ url_for('search_page') }}" class="btn-clear-filters">Clear All Filters</a>
+    {% endif %}
+  </div>
+
+  <!-- Movie Grid or Empty State -->
+  {% if results_count > 0 %}
+  <div class="movie-grid">
+    {% for movie in results %}
+    <div class="movie-card" data-movie-id="{{ movie.movieId }}">
+      <div class="card-media">
+        <img src="{{ movie.poster_url }}" alt="{{ movie.clean_title }}" loading="lazy" class="movie-poster" onerror="if(this.src.indexOf('fallback=svg')===-1){this.src='/poster/{{ movie.movieId }}?fallback=svg';}">
+        {% if movie.movieId in user_ratings_map %}
+        <div class="user-rated-badge">
+          Your Rating: {{ user_ratings_map[movie.movieId] }}★
+        </div>
+        {% endif %}
+        <button 
+          class="btn-quick-rate" 
+          data-movie-id="{{ movie.movieId }}" 
+          data-title="{{ movie.clean_title }}"
+          title="Rate this movie"
+        >
+          ★ Rate
+        </button>
+      </div>
+
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="movie-year">{{ movie.year or 'N/A' }}</span>
+          <span class="movie-rating-badge">
+            ★ {{ movie.rating_mean }} <span class="vote-count">({{ movie.rating_count }})</span>
+          </span>
+        </div>
+
+        <h3 class="movie-title">
+          <a href="{{ url_for('movie_details_page', movie_id=movie.movieId) }}" title="{{ movie.clean_title }}">
+            {{ movie.clean_title }}
+          </a>
+        </h3>
+
+        <div class="movie-genres">
+          {% for g in movie.genres[:3] %}
+          <span class="genre-pill">{{ g }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="card-actions">
+          <a href="{{ url_for('movie_details_page', movie_id=movie.movieId) }}" class="btn-card-details">
+            Details
+          </a>
+          <a href="{{ url_for('recommend_similar_movies', movie_id=movie.movieId) }}" class="btn-card-similar">
+            Similar
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h2>No Movies Found</h2>
+    <p>We couldn't find any movies matching your search criteria. Try a partial title or broader genre filter.</p>
+    <a href="{{ url_for('search_page') }}?q=&genre=All" class="btn-primary">Browse All Movies</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

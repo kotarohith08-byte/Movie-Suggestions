@@ -1,0 +1,31 @@
+{
+  "algorithm": "TruncatedSVD Matrix Factorization",
+  "latent_factors": 30,
+  "rmse": 0.9259,
+  "mae": 0.7139,
+  "precision_at_10": 0.6364,
+  "recall_at_10": 0.6678,
+  "ndcg_at_10": 0.8536,
+  "test_ratings_evaluated": 20168,
+  "train_ratings_used": 80668,
+  "relevance_threshold": 3.5,
+  "comparison": {
+    "content_based": {
+      "algorithm": "TF-IDF + Cosine Similarity",
+      "features": "Genres, Tags, Title N-grams",
+      "strengths": "Zero cold-start for new items, highly interpretable explanations",
+      "weaknesses": "Cannot capture cross-user serendipity without ratings"
+    },
+    "collaborative_filtering": {
+      "algorithm": "Latent Factor Matrix Factorization (SVD)",
+      "features": "User-Item Interaction Matrix",
+      "strengths": "Discovers latent taste clusters and cross-genre recommendations",
+      "weaknesses": "Cold-start for new users/items with few or zero ratings"
+    },
+    "hybrid": {
+      "algorithm": "Dynamic Weighted Ensemble (Content + SVD + Bayesian Quality)",
+      "strengths": "Best of both worlds: handles cold-start gracefully while providing serendipitous recommendations",
+      "status": "Active Default Engine"
+    }
+  }
+}

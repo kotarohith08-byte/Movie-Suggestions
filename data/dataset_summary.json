@@ -1,0 +1,9 @@
+{
+  "total_movies": 9742,
+  "total_users": 610,
+  "total_ratings": 100836,
+  "global_average_rating": 3.5,
+  "matrix_sparsity_percent": 98.3,
+  "min_rating": 0.5,
+  "max_rating": 5.0
+}
