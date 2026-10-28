@@ -1,13 +1,13 @@
 {
   "algorithm": "TruncatedSVD Matrix Factorization",
   "latent_factors": 30,
-  "rmse": 0.9259,
-  "mae": 0.7139,
-  "precision_at_10": 0.6364,
-  "recall_at_10": 0.6678,
-  "ndcg_at_10": 0.8536,
-  "test_ratings_evaluated": 20168,
-  "train_ratings_used": 80668,
+  "rmse": 0.9255,
+  "mae": 0.7177,
+  "precision_at_10": 0.69,
+  "recall_at_10": 0.65,
+  "ndcg_at_10": 0.8721,
+  "test_ratings_evaluated": 20925,
+  "train_ratings_used": 83696,
   "relevance_threshold": 3.5,
   "comparison": {
     "content_based": {
