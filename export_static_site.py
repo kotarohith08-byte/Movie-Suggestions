@@ -2,7 +2,7 @@
 export_static_site.py - Builds the Standalone GitHub Pages CineMatch AI Website
 ==============================================================================
 Generates:
-1. static_data.js (embedded dataset of ALL 10,327 movies in the catalog: 245 Tollywood, 340 Bollywood, and 9,742 Hollywood & World Cinema titles)
+1. static_data.js (embedded dataset of ALL 10,742 movies: 415 Kollywood, 340 Bollywood, 245 Tollywood, and 9,742 Hollywood titles)
 2. index.html at root (standalone interactive client-side web application for GitHub Pages)
 3. .nojekyll (disables Jekyll so GitHub Pages serves index.html directly)
 """
@@ -30,8 +30,11 @@ for _, row in movies_df.iterrows():
     sims = [s[0] for s in top_sims.get(mid, [])[:5]]
 
     # Tag language/industry
+    is_kollywood = bool(mid >= 201001)
     is_tollywood = bool((200001 <= mid <= 200030) or (200061 <= mid <= 200275))
-    is_bollywood = bool((200031 <= mid <= 200060) or (mid >= 200301))
+    is_bollywood = bool((200031 <= mid <= 200060) or (200301 <= mid <= 200615))
+
+    industry = "Kollywood" if is_kollywood else ("Tollywood" if is_tollywood else ("Bollywood" if is_bollywood else "Global"))
 
     movies_list.append({
         "id": mid,
@@ -44,7 +47,7 @@ for _, row in movies_df.iterrows():
         "score": float(round(row["weighted_score"], 2)),
         "poster": poster,
         "sims": sims,
-        "industry": "Tollywood" if is_tollywood else ("Bollywood" if is_bollywood else "Global")
+        "industry": industry
     })
 
 # Sort order: Indian cinema blockbusters first, then by popularity/votes descending
@@ -57,11 +60,13 @@ js_content = f"var MOVIES_DATABASE = {json_data};\nif (typeof window !== 'undefi
 with open(os.path.join(BASE_DIR, "static", "js", "static_data.js"), "w", encoding="utf-8") as f:
     f.write(js_content)
 
+kollywood_count = sum(1 for m in movies_list if m["industry"] == "Kollywood")
 tollywood_count = sum(1 for m in movies_list if m["industry"] == "Tollywood")
 bollywood_count = sum(1 for m in movies_list if m["industry"] == "Bollywood")
 hollywood_count = sum(1 for m in movies_list if m["industry"] == "Global")
 
 print(f"[OK] Successfully exported ALL {len(movies_list)} movies:")
+print(f"     - Kollywood (Tamil) : {kollywood_count}")
 print(f"     - Tollywood (Telugu): {tollywood_count}")
 print(f"     - Bollywood (Hindi) : {bollywood_count}")
 print(f"     - Hollywood & World : {hollywood_count}")
