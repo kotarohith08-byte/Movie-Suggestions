@@ -15,7 +15,7 @@
   // State
   let activeGenre = "All";
   let activeAlgorithm = "hybrid";
-  let activeIndustry = "Tollywood";
+  let activeIndustry = "Bollywood";
   let indianDisplayCount = 24;
   let userRatings = loadUserRatings();
 
@@ -290,10 +290,10 @@
     let pool = MOVIES.filter(m => {
       if (m.id < 200000) return false;
       if (activeIndustry === "Tollywood") {
-        return m.industry === "Tollywood" || (200001 <= m.id && m.id <= 200030) || m.id >= 200061;
+        return m.industry === "Tollywood" || (200001 <= m.id && m.id <= 200030) || (200061 <= m.id && m.id <= 200275);
       }
       if (activeIndustry === "Bollywood") {
-        return m.industry === "Bollywood" || (200031 <= m.id && m.id <= 200060);
+        return m.industry === "Bollywood" || (200031 <= m.id && m.id <= 200060) || m.id >= 200301;
       }
       return true;
     }).slice().sort((a, b) => b.score - a.score);
