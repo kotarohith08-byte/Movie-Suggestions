@@ -2,7 +2,7 @@
 export_static_site.py - Builds the Standalone GitHub Pages CineMatch AI Website
 ==============================================================================
 Generates:
-1. static_data.js (embedded dataset of 2,085+ curated movies including 245 Tollywood + 340 Bollywood with 100% TMDB CDN posters)
+1. static_data.js (embedded dataset of ALL 10,327 movies in the catalog: 245 Tollywood, 340 Bollywood, and 9,742 Hollywood & World Cinema titles)
 2. index.html at root (standalone interactive client-side web application for GitHub Pages)
 3. .nojekyll (disables Jekyll so GitHub Pages serves index.html directly)
 """
@@ -20,26 +20,21 @@ posters_cache = json.load(open(os.path.join(DATA_DIR, "posters_cache.json"), enc
 movies_df = pd.read_csv(os.path.join(DATA_DIR, "processed_movies.csv"))
 top_sims = joblib.load(os.path.join(MODELS_DIR, "content_top_sims.joblib"))
 
-# Select all 585 Indian movies (245 Tollywood + 340 Bollywood) + top 1,500 popular MovieLens movies
-indian_mids = [mid for mid in movies_df["movieId"] if mid >= 200000]
-top_ml = movies_df[movies_df["movieId"] < 200000].sort_values(by="rating_count", ascending=False).head(1500)["movieId"].tolist()
-
-selected_mids = set(indian_mids + top_ml)
 movies_list = []
 
-for mid in selected_mids:
-    row = movies_df[movies_df["movieId"] == mid].iloc[0]
-    mid_int = int(mid)
+for _, row in movies_df.iterrows():
+    mid = int(row["movieId"])
     genres = [g.strip() for g in str(row["genres"]).split("|") if g.strip() and g != "(no genres listed)"]
-    poster = posters_cache.get(str(mid_int)) or ""
-    sims = [s[0] for s in top_sims.get(mid_int, [])[:8] if s[0] in selected_mids]
+    poster = posters_cache.get(str(mid)) or ""
+    # Top 4 similar movies
+    sims = [s[0] for s in top_sims.get(mid, [])[:5]]
 
     # Tag language/industry
-    is_tollywood = bool((200001 <= mid_int <= 200030) or (200061 <= mid_int <= 200275))
-    is_bollywood = bool((200031 <= mid_int <= 200060) or (mid_int >= 200301))
+    is_tollywood = bool((200001 <= mid <= 200030) or (200061 <= mid <= 200275))
+    is_bollywood = bool((200031 <= mid <= 200060) or (mid >= 200301))
 
     movies_list.append({
-        "id": mid_int,
+        "id": mid,
         "title": str(row["clean_title"]),
         "full_title": str(row["title"]),
         "year": int(row["year"]) if pd.notnull(row["year"]) else None,
@@ -52,7 +47,7 @@ for mid in selected_mids:
         "industry": "Tollywood" if is_tollywood else ("Bollywood" if is_bollywood else "Global")
     })
 
-# Sort movies: Indian blockbusters first, then by popularity/votes
+# Sort order: Indian cinema blockbusters first, then by popularity/votes descending
 movies_list.sort(key=lambda m: (m["id"] < 200000, -m["votes"], -m["score"]))
 
 # Write static_data.js with BOTH window.MOVIES_DATABASE and var MOVIES_DATABASE
@@ -64,7 +59,13 @@ with open(os.path.join(BASE_DIR, "static", "js", "static_data.js"), "w", encodin
 
 tollywood_count = sum(1 for m in movies_list if m["industry"] == "Tollywood")
 bollywood_count = sum(1 for m in movies_list if m["industry"] == "Bollywood")
-print(f"[OK] Exported {len(movies_list)} movies total ({tollywood_count} Tollywood, {bollywood_count} Bollywood) with 100% TMDB CDN posters to static/js/static_data.js")
+hollywood_count = sum(1 for m in movies_list if m["industry"] == "Global")
+
+print(f"[OK] Successfully exported ALL {len(movies_list)} movies:")
+print(f"     - Tollywood (Telugu): {tollywood_count}")
+print(f"     - Bollywood (Hindi) : {bollywood_count}")
+print(f"     - Hollywood & World : {hollywood_count}")
+print("[OK] Dataset exported to static/js/static_data.js")
 
 # Touch .nojekyll
 with open(os.path.join(BASE_DIR, ".nojekyll"), "w") as f:
