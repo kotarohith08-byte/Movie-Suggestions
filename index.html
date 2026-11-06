@@ -3,47 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CineMatch AI - AI-Powered Movie Recommendation System</title>
-  <meta name="description" content="Discover Tollywood, Bollywood, and Hollywood movies you will love using machine learning, content-based similarity, and collaborative filtering.">
+  <title>CineMatch AI - Intelligent Movie Discovery & Recommendation Platform</title>
+  <meta name="description" content="Streaming-grade AI movie discovery platform powered by hybrid machine learning, content similarity, SVD collaborative filtering, and natural language assistant for Tollywood, Bollywood, Kollywood, and Hollywood.">
   
-  <!-- Fonts -->
+  <!-- Modern Fonts: Plus Jakarta Sans & Space Grotesk -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700;900&display=swap" rel="stylesheet">
   
-  <!-- Chart.js for ML Metrics -->
+  <!-- Chart.js for ML Evaluation Metrics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <!-- CineMatch Styles -->
-  <link rel="stylesheet" href="static/css/style.css">
-  <style>
-    /* GitHub Pages Enhancements */
-    .pages-banner {
-      background: linear-gradient(90deg, rgba(139, 92, 246, 0.2), rgba(6, 182, 212, 0.2));
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 6px 16px;
-      text-align: center;
-      font-size: 0.78rem;
-      color: #c4b5fd;
-    }
-    .pages-banner a {
-      color: #38bdf8;
-      text-decoration: underline;
-      font-weight: 600;
-    }
-    .modal-overlay {
-      display: none;
-    }
-    .modal-overlay.active {
-      display: flex !important;
-    }
-  </style>
+  <!-- CineMatch Premium Streaming Stylesheet -->
+  <link rel="stylesheet" href="static/css/style.css?v=20261106-streaming-v2">
 </head>
-<body class="bg-cinematic text-slate-100">
+<body>
 
-  <!-- Deployment Banner -->
+  <!-- Top Announcement Banner -->
   <div class="pages-banner">
-    🚀 <strong>Official Full Web Edition:</strong> Powered by Scikit-learn TF-IDF & SVD Matrix Factorization with <strong>ALL 10,327 movies</strong> including 245 Tollywood & 340 Bollywood blockbusters.
+    <span>✨ <strong>CineMatch AI 2.0:</strong> Powered by Scikit-learn TF-IDF &amp; SVD Collaborative Filtering across <strong>10,742 movies</strong> with authentic theatrical posters for Tollywood, Bollywood, Kollywood &amp; Hollywood.</span>
   </div>
 
   <!-- Navigation Bar -->
@@ -51,107 +29,374 @@
     <div class="nav-container">
       <a href="index.html" class="brand-logo">
         <div class="brand-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
         </div>
         <span class="brand-name">CineMatch<span class="text-accent">AI</span></span>
       </a>
 
-      <!-- Quick Search Bar in Nav -->
+      <!-- Quick Autocomplete Search Bar -->
       <div class="nav-search-form">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input 
-          type="text" 
-          id="navSearchInput" 
-          placeholder="Search RRR, Kalki, Dangal, Inception, Matrix..." 
-          class="nav-search-input"
-          autocomplete="off"
-        >
+        <div class="nav-search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            type="text" 
+            id="navSearchInput" 
+            placeholder="Search 10,742 movies, genres, actors, years..." 
+            class="nav-search-input"
+            autocomplete="off"
+            aria-label="Search movies"
+          >
+          <div id="navAutocompleteDropdown" class="autocomplete-dropdown hidden"></div>
+        </div>
       </div>
 
-      <!-- Nav Actions -->
+      <!-- Navigation Actions -->
       <nav class="nav-actions">
+        <a href="#discover" class="nav-link">Discover</a>
+        <a href="#top10" class="nav-link text-crimson">Top 10</a>
+        <a href="#moods" class="nav-link">Moods</a>
         <a href="#personalized" class="nav-link">Personalized</a>
-        <a href="#popular" class="nav-link">Trending</a>
-        <a href="#indian" class="nav-link text-cyan">Tollywood, Bollywood &amp; Kollywood</a>
+        <a href="#indian" class="nav-link text-cyan">Indian Cinema</a>
+        
+        <!-- Ask AI Nav Button -->
+        <a href="#ai-assistant" class="btn-ask-ai-nav" id="navAskAiBtn">
+          <span class="ai-sparkle-dot"></span>
+          <span>Ask AI</span>
+        </a>
+
+        <!-- Watchlist Drawer Trigger -->
+        <button id="openWatchlistBtn" class="btn-watchlist-nav" title="My Watchlist & Favourites">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Watchlist</span>
+          <span id="navWatchlistBadge" class="badge-count">0</span>
+        </button>
+
+        <!-- ML Metrics Trigger -->
         <button id="openMetricsBtn" class="btn-metrics" title="View ML Model Architecture & Evaluation Metrics">
           <span class="status-dot"></span> ML Metrics
         </button>
 
-        <div class="user-pill">
+        <div class="user-pill" title="Signed in as Guest User">
           <span class="avatar">👤</span>
-          <span class="user-id-text" id="activeUserText">Guest User</span>
+          <span class="user-id-text" id="activeUserText">Guest</span>
         </div>
       </nav>
     </div>
   </header>
 
   <!-- Toast Notification Container -->
-  <div id="toastContainer" class="toast-container"></div>
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Main Content -->
   <main class="main-content">
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-      <div class="hero-glow hero-glow-1"></div>
-      <div class="hero-glow hero-glow-2"></div>
+    <!-- 1. Streaming Hero Banner (Image 3 Inspiration - Cinevo) -->
+    <section class="streaming-hero-banner" id="heroBanner">
+      <img src="" alt="Hero Movie Backdrop" id="heroBackdropImg" class="hero-backdrop-img">
+      <div class="hero-gradient-overlay"></div>
 
-      <div class="hero-content">
-        <div class="hero-tag">
-          <span class="tag-sparkle">✨</span>
-          <span>AI-Powered Movie Discovery System</span>
+      <div class="hero-content-box">
+        <div class="hero-brand-tag">
+          <span>★ CineMatch Spotlight</span>
         </div>
-        <h1 class="hero-title">
-          Discover Your Next <br>
-          <span class="gradient-text">Favorite Movie</span>
-        </h1>
-        <p class="hero-subtitle">
-          Intelligent recommendation engine analyzing movie metadata, audience ratings, and genres 
-          with real theatrical posters for Tollywood, Bollywood, and Hollywood.
+        <h1 class="hero-movie-title" id="heroMovieTitle">Kalki 2898 AD</h1>
+        
+        <div class="hero-meta-row" id="heroMetaRow">
+          <span class="meta-rating-pill" id="heroRatingBadge">★ 4.9</span>
+          <span class="meta-cert-pill" id="heroCertBadge">UA 16+</span>
+          <span id="heroYearBadge">2024</span>
+          <span>•</span>
+          <span id="heroDurationBadge">3h 01m</span>
+          <span>•</span>
+          <span id="heroIndustryBadge" class="text-cyan">Tollywood</span>
+          <span>•</span>
+          <span id="heroGenresBadge" class="text-purple">Sci-Fi, Action, Fantasy</span>
+        </div>
+
+        <p class="hero-synopsis-text" id="heroSynopsisText">
+          A modern avatar of Vishnu descends to Earth to protect humanity from dark forces in a dystopian post-apocalyptic world.
         </p>
 
-        <!-- Main Search Bar -->
-        <div class="hero-search-box">
-          <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input 
-            type="text" 
-            id="heroSearchInput" 
-            placeholder="Search by title (e.g. RRR, Baahubali, Kalki, 12th Fail, Inception)..." 
-            class="hero-search-input"
-          >
-          <button type="button" id="heroSearchBtn" class="hero-search-btn">
-            <span>Find Movies</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
+        <div class="hero-cta-group">
+          <button type="button" class="btn-hero-primary" id="heroWatchTrailerBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>Watch Trailer</span>
           </button>
-        </div>
+          
+          <button type="button" class="btn-hero-secondary" id="heroWatchlistBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+            <span id="heroWatchlistBtnText">Add to Watchlist</span>
+          </button>
 
-        <!-- Genre Preference Quick-Select Chips -->
-        <div class="genre-preferences-bar" id="genres">
-          <div class="preferences-label">
-            <span>Filter by Preferred Genres:</span>
-            <span class="preferences-hint" id="genreFilterStatus">Showing All</span>
-          </div>
-          <div class="genre-chips-container" id="genreChipsWrapper"></div>
+          <button type="button" class="btn-hero-secondary" id="heroDetailsBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>Details</span>
+          </button>
+
+          <a href="#ai-assistant" class="btn-hero-ai">
+            <span>✨ Ask AI Recommender</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Featured Switcher Thumbnails -->
+      <div class="hero-switcher-bar" id="heroSwitcherBar">
+        <!-- Rendered dynamically via site.js -->
+      </div>
+    </section>
+
+    <!-- 2. "TOP 10 CONTENTS TODAY" (Image 3 Inspiration with giant outlined rank numbers) -->
+    <section class="section-container" id="top10">
+      <div class="section-header">
+        <div>
+          <div class="section-badge">Trending Worldwide</div>
+          <h2 class="section-title"><span class="top10-title-prefix">TOP 10</span> CONTENTS TODAY</h2>
+          <p class="section-desc">Highest audience engagement, Bayesian rating weight, and algorithmic popularity across all industries.</p>
+        </div>
+      </div>
+
+      <div class="top10-carousel-wrap">
+        <div class="top10-grid" id="top10Grid">
+          <!-- Rendered dynamically with giant outlined numbers 1 to 10 -->
         </div>
       </div>
     </section>
 
-    <!-- Search Results Section (Shown when searching) -->
+    <!-- 3. Ask CineMatch AI Assistant (Image 1 Inspiration - Elysium AI) -->
+    <section class="section-container" id="ai-assistant">
+      <div class="section-header">
+        <div>
+          <div class="section-badge">Natural Language Recommendation</div>
+          <h2 class="section-title">Ask CineMatch <span class="text-accent">AI Assistant</span></h2>
+          <p class="section-desc">Enter conversational prompts to discover handpicked recommendations with transparent algorithmic reasoning.</p>
+        </div>
+      </div>
+
+      <div class="ai-assistant-card">
+        <!-- AI Card Header -->
+        <div class="ai-assistant-header">
+          <div class="ai-header-left">
+            <div class="ai-robot-avatar">🤖</div>
+            <div>
+              <div class="ai-header-title">CineMatch AI Conversational Engine</div>
+              <div class="ai-header-subtitle">Client-Side NLP &bull; Scikit-learn Semantic Metadata Matcher &bull; Offline Ready</div>
+            </div>
+          </div>
+          <button type="button" class="btn-reset-chat" id="btnResetChat">Clear Conversation</button>
+        </div>
+
+        <!-- Chat Feed -->
+        <div class="ai-chat-thread" id="aiChatThread">
+          <!-- Initial AI greeting message -->
+          <div class="chat-msg assistant">
+            <div class="chat-avatar">✨</div>
+            <div class="chat-bubble">
+              <p>Hello! I am your <strong>CineMatch AI Movie Assistant</strong>. Tell me what you're in the mood for, such as:</p>
+              <ul style="margin: 8px 0 12px 20px; font-size: 0.88rem; color: #cbd5e1;">
+                <li><em>"Recommend five mind-bending science fiction movies"</em></li>
+                <li><em>"Suggest emotional Telugu movies"</em></li>
+                <li><em>"Find underrated thriller movies"</em></li>
+                <li><em>"Recommend movies similar to Interstellar"</em></li>
+                <li><em>"Suggest comedy movies released after 2020"</em></li>
+                <li><em>"Recommend movies suitable for family viewing"</em></li>
+              </ul>
+              <p style="font-size: 0.84rem; color: #94a3b8;">Choose a prompt chip below or type your request:</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <div class="ai-chat-input-bar">
+          <div class="ai-prompt-chips" id="aiPromptChips">
+            <button type="button" class="prompt-chip" data-query="Recommend five mind-bending science fiction movies">🚀 Mind-bending Sci-Fi</button>
+            <button type="button" class="prompt-chip" data-query="Suggest emotional Telugu movies">🎬 Emotional Telugu Movies</button>
+            <button type="button" class="prompt-chip" data-query="Find underrated thriller movies">🔍 Underrated Thrillers</button>
+            <button type="button" class="prompt-chip" data-query="Recommend movies similar to Interstellar">🌌 Similar to Interstellar</button>
+            <button type="button" class="prompt-chip" data-query="Suggest comedy movies released after 2020">😂 Comedy after 2020</button>
+            <button type="button" class="prompt-chip" data-query="Recommend movies suitable for family viewing">👨‍👩‍👧 Family Viewing</button>
+          </div>
+
+          <form class="ai-input-form" id="aiChatForm">
+            <input 
+              type="text" 
+              id="aiChatInput" 
+              placeholder="Ask anything... e.g. 'Recommend thrilling Tamil movies' or 'Romantic comedies like La La Land'" 
+              class="ai-text-input"
+              autocomplete="off"
+            >
+            <button type="submit" class="btn-send-ai">
+              <span>Ask AI</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Choose Your Mood (Requirement 4) -->
+    <section class="section-container" id="moods">
+      <div class="section-header">
+        <div>
+          <div class="section-badge">Emotional Discovery</div>
+          <h2 class="section-title">Choose Your Mood</h2>
+          <p class="section-desc">Select how you want to feel right now. We map emotional resonance directly to genre vectors and tonal attributes.</p>
+        </div>
+        <div id="activeMoodIndicator" class="preferences-hint" style="font-weight: 600; color: #a78bfa;"></div>
+      </div>
+
+      <div class="moods-grid" id="moodsGrid">
+        <div class="mood-card" data-mood="happy">
+          <div class="mood-icon">😄</div>
+          <div class="mood-title">Happy</div>
+          <div class="mood-desc">Uplifting comedies, heartwarming animation &amp; feel-good cinema.</div>
+        </div>
+        <div class="mood-card" data-mood="sad">
+          <div class="mood-icon">😢</div>
+          <div class="mood-title">Sad</div>
+          <div class="mood-desc">Deep emotional dramas, touching stories &amp; cathartic tears.</div>
+        </div>
+        <div class="mood-card" data-mood="excited">
+          <div class="mood-icon">⚡</div>
+          <div class="mood-title">Excited</div>
+          <div class="mood-desc">High-octane action, pulse-pounding thrillers &amp; pure adrenaline.</div>
+        </div>
+        <div class="mood-card" data-mood="relaxed">
+          <div class="mood-icon">☕</div>
+          <div class="mood-title">Relaxed</div>
+          <div class="mood-desc">Gentle slice-of-life, peaceful visuals &amp; low-stress comfort films.</div>
+        </div>
+        <div class="mood-card" data-mood="motivated">
+          <div class="mood-icon">🏆</div>
+          <div class="mood-title">Motivated</div>
+          <div class="mood-desc">Triumphant biopics, sports victories &amp; underdog inspirations.</div>
+        </div>
+        <div class="mood-card" data-mood="romantic">
+          <div class="mood-icon">💖</div>
+          <div class="mood-title">Romantic</div>
+          <div class="mood-desc">Passionate love stories, swoon-worthy chemistry &amp; romance.</div>
+        </div>
+        <div class="mood-card" data-mood="curious">
+          <div class="mood-icon">🧠</div>
+          <div class="mood-title">Curious</div>
+          <div class="mood-desc">Mind-bending sci-fi, complex whodunits &amp; plot twists.</div>
+        </div>
+        <div class="mood-card" data-mood="adventurous">
+          <div class="mood-icon">🗺️</div>
+          <div class="mood-title">Adventurous</div>
+          <div class="mood-desc">Grand fantasy quests, epic explorations &amp; mythical journeys.</div>
+        </div>
+      </div>
+
+      <!-- Mood Results Grid (Shown when mood is active) -->
+      <div id="moodResultsSection" class="hidden" style="margin-top: 24px;">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title" id="moodResultsTitle">Mood Recommendations</h3>
+            <p class="section-desc" id="moodResultsDesc">Handcrafted algorithmic matches for your chosen vibe.</p>
+          </div>
+          <button type="button" class="btn-clear-filters" id="clearMoodBtn">Clear Mood Filter</button>
+        </div>
+        <div class="movie-grid" id="moodResultsGrid"></div>
+      </div>
+    </section>
+
+    <!-- 5. Advanced Discover & Multi-Filter Bar (Requirement 5) -->
+    <section class="section-container" id="discover">
+      <div class="section-header">
+        <div>
+          <div class="section-badge">Explore Catalog</div>
+          <h2 class="section-title">Advanced Movie Discovery</h2>
+          <p class="section-desc">Search and filter across 10,742 titles by industry, genre, release era, rating, and algorithmic score.</p>
+        </div>
+      </div>
+
+      <div class="discover-filter-card">
+        <!-- Main Filter Select Controls -->
+        <div class="filter-row">
+          <div class="filter-control-group">
+            <span class="filter-label">Industry:</span>
+            <select id="filterIndustrySelect" class="filter-select">
+              <option value="all">All Industries (10,742)</option>
+              <option value="Tollywood">🎬 Tollywood (245+)</option>
+              <option value="Bollywood">🎭 Bollywood (340+)</option>
+              <option value="Kollywood">🦁 Kollywood (415+)</option>
+              <option value="Hollywood">🌟 Hollywood &amp; Global (9,742+)</option>
+            </select>
+          </div>
+
+          <div class="filter-control-group">
+            <span class="filter-label">Release Era:</span>
+            <select id="filterEraSelect" class="filter-select">
+              <option value="all">All Time (1900 - 2026)</option>
+              <option value="2020s">Recent (2020 - 2026)</option>
+              <option value="2010s">Modern Era (2010 - 2019)</option>
+              <option value="2000s">2000s Decade (2000 - 2009)</option>
+              <option value="classics">Classics (Before 2000)</option>
+            </select>
+          </div>
+
+          <div class="filter-control-group">
+            <span class="filter-label">Min Rating:</span>
+            <select id="filterRatingSelect" class="filter-select">
+              <option value="0">Any Rating</option>
+              <option value="3.5">★ 3.5 &amp; Above</option>
+              <option value="4.0">★ 4.0 &amp; Above (Great)</option>
+              <option value="4.5">★ 4.5 &amp; Above (Masterpiece)</option>
+            </select>
+          </div>
+
+          <div class="filter-control-group">
+            <span class="filter-label">Sort By:</span>
+            <select id="filterSortSelect" class="filter-select">
+              <option value="score">Quality Score (Bayesian)</option>
+              <option value="votes">Audience Popularity</option>
+              <option value="year_desc">Latest Release Year</option>
+              <option value="year_asc">Oldest Release Year</option>
+              <option value="title">Title (A to Z)</option>
+            </select>
+          </div>
+
+          <button type="button" class="btn-reset-filters" id="btnResetAllFilters">Reset All Filters</button>
+        </div>
+
+        <!-- Genre Preference Chips -->
+        <div class="genre-preferences-bar">
+          <div class="preferences-label">
+            <span>Filter by Genre:</span>
+            <span class="preferences-hint" id="genreFilterStatus">Showing All</span>
+          </div>
+          <div class="genre-chips-container" id="genreChipsWrapper">
+            <!-- Populated dynamically via site.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Discovery Results Grid -->
+      <div id="discoveryStatusText" style="margin-bottom: 16px; font-size: 0.9rem; color: #94a3b8;"></div>
+      <div class="movie-grid" id="discoveryGrid"></div>
+
+      <div style="text-align: center; margin-top: 28px;">
+        <button id="loadMoreDiscoveryBtn" class="btn-hero-secondary" style="padding: 10px 28px; font-size: 0.95rem; cursor: pointer;">
+          ⬇ Load More Movies
+        </button>
+      </div>
+    </section>
+
+    <!-- Search Matches Section (Shown when search is active) -->
     <section class="section-container hidden" id="searchResultsSection">
       <div class="section-header">
         <div>
-          <div class="section-badge">Search Results</div>
+          <div class="section-badge">Live Search</div>
           <h2 class="section-title" id="searchResultsTitle">Search Matches</h2>
           <p class="section-desc" id="searchResultsCount">Matching movies found in catalog</p>
         </div>
@@ -160,13 +405,13 @@
       <div class="movie-grid" id="searchResultsGrid"></div>
     </section>
 
-    <!-- Personalized Recommendations Section -->
+    <!-- 6. Personalized Recommendations Section -->
     <section class="section-container" id="personalized">
       <div class="section-header">
         <div>
           <div class="section-badge">Tailored For You</div>
           <h2 class="section-title">Personalized Recommendations</h2>
-          <p class="section-desc">Dynamic recommendations tuned to your taste profile and rating signals.</p>
+          <p class="section-desc">Dynamic recommendations tuned to your taste profile and rating signals with explainable AI reason tags.</p>
         </div>
 
         <!-- Algorithm Switcher Tabs -->
@@ -181,7 +426,7 @@
       <div class="movie-grid" id="personalizedGrid"></div>
     </section>
 
-    <!-- Tollywood, Bollywood & Kollywood Spotlight (Post-2011) -->
+    <!-- 7. Tollywood, Bollywood & Kollywood Spotlight -->
     <section class="section-container" id="indian">
       <div class="section-header">
         <div>
@@ -208,12 +453,12 @@
       </div>
     </section>
 
-    <!-- Trending / Popular Section -->
+    <!-- 8. Trending / Popular Section -->
     <section class="section-container" id="popular">
       <div class="section-header">
         <div>
           <div class="section-badge">Global Audience</div>
-          <h2 class="section-title">Trending & Most Watched Masterpieces</h2>
+          <h2 class="section-title">Trending &amp; Most Watched Masterpieces</h2>
           <p class="section-desc">Movies with the highest rating count and Bayesian weighted quality score.</p>
         </div>
       </div>
@@ -221,7 +466,7 @@
       <div class="movie-grid" id="popularGrid"></div>
     </section>
 
-    <!-- User Rated Movies History -->
+    <!-- 9. User Rated Movies History -->
     <section class="section-container" id="myRatingsSection">
       <div class="section-header">
         <div>
@@ -242,54 +487,107 @@
 
   </main>
 
-  <!-- Movie Detail Modal -->
-  <div id="detailModal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <span class="modal-badge" id="modalBadge">Movie Details</span>
-          <h2 id="modalMovieTitle">Movie Title</h2>
+  <!-- =========================================================================
+       MODALS
+       ========================================================================= -->
+
+  <!-- Cinematic Movie Detail Modal (Image 2 Style - Backdrop & Cast Avatars) -->
+  <div id="detailModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-cinematic-card">
+      <button class="modal-close-btn" id="closeDetailModalBtn" title="Close modal">&times;</button>
+      
+      <!-- Modal Hero Header with Backdrop -->
+      <div class="modal-hero-header" id="modalHeroHeader">
+        <div class="modal-hero-overlay"></div>
+        <div class="modal-hero-content">
+          <div class="modal-poster-wrap">
+            <img src="" alt="Movie Poster" id="modalDetailPoster" class="modal-poster-img">
+          </div>
+          <div class="modal-title-info">
+            <h2 class="modal-movie-title" id="modalMovieTitle">Movie Title</h2>
+            <div class="modal-meta-pills" id="modalMetaPills"></div>
+          </div>
         </div>
-        <button class="modal-close" id="closeDetailModalBtn">&times;</button>
       </div>
-      <div class="modal-body" id="modalDetailBody"></div>
+
+      <!-- Modal Body -->
+      <div class="modal-main-body" id="modalDetailBody">
+        <!-- Rendered dynamically via site.js -->
+      </div>
     </div>
   </div>
 
-  <!-- Rating Interactive Modal -->
-  <div id="ratingModal" class="modal-overlay">
-    <div class="modal-card small-modal">
-      <div class="modal-header">
-        <h3 id="ratingModalTitle">Rate Movie</h3>
-        <button class="modal-close" id="closeRatingModalBtn">&times;</button>
+  <!-- Trailer Video Modal (Responsive 16:9 Player) -->
+  <div id="trailerModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="trailer-modal-card">
+      <div class="modal-header" style="padding: 16px 20px; background: #111726; margin: 0;">
+        <h3 id="trailerModalTitle" style="font-size: 1.1rem; color: #fff;">Official Trailer</h3>
+        <button class="modal-close-btn" id="closeTrailerModalBtn" style="position: static;">&times;</button>
       </div>
-      <div class="modal-body text-center">
-        <p id="ratingModalSubtitle" class="text-slate-400">Select your rating on a scale of 1 to 5 stars:</p>
-        <div class="star-rating-container" id="modalStars">
-          <button class="star-btn" data-val="1">★</button>
-          <button class="star-btn" data-val="2">★</button>
-          <button class="star-btn" data-val="3">★</button>
-          <button class="star-btn" data-val="4">★</button>
-          <button class="star-btn" data-val="5">★</button>
+      <div class="video-responsive-wrap">
+        <iframe id="trailerIframe" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal Watchlist & Favourites Modal (Requirement 6) -->
+  <div id="watchlistModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="watchlist-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd;">Personal Library</span>
+          <h2>Your Saved Collection</h2>
         </div>
-        <div class="rating-value-badge" id="modalRatingText">Click a star to rate</div>
+        <button class="modal-close-btn" id="closeWatchlistModalBtn" style="position: static;">&times;</button>
+      </div>
+
+      <div class="watchlist-tabs" id="watchlistTabs">
+        <button class="watchlist-tab-btn active" data-tab="watchlist">📌 Watchlist (<span id="modalWatchlistCount">0</span>)</button>
+        <button class="watchlist-tab-btn" data-tab="favourites">❤️ Favourites (<span id="modalFavCount">0</span>)</button>
+        <button class="watchlist-tab-btn" data-tab="watched">✅ Watched (<span id="modalWatchedCount">0</span>)</button>
+        <button class="watchlist-tab-btn" data-tab="ratings">⭐ Rated (<span id="modalRatingsCount">0</span>)</button>
+      </div>
+
+      <div id="watchlistTabContent" class="movie-grid">
+        <!-- Rendered dynamically via site.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive 5-Star Rater Modal -->
+  <div id="ratingModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="small-modal">
+      <div class="modal-header">
+        <h3 id="ratingModalTitle" style="font-size: 1.1rem; color: #fff;">Rate Movie</h3>
+        <button class="modal-close-btn" id="closeRatingModalBtn" style="position: static;">&times;</button>
+      </div>
+      <div class="text-center" style="text-align: center;">
+        <p id="ratingModalSubtitle" class="text-secondary" style="font-size: 0.9rem; margin-bottom: 12px;">Select your rating on a scale of 1 to 5 stars:</p>
+        <div class="star-rating-container" id="modalStars">
+          <button type="button" class="star-btn" data-val="1">★</button>
+          <button type="button" class="star-btn" data-val="2">★</button>
+          <button type="button" class="star-btn" data-val="3">★</button>
+          <button type="button" class="star-btn" data-val="4">★</button>
+          <button type="button" class="star-btn" data-val="5">★</button>
+        </div>
+        <div class="rating-value-badge" id="modalRatingText" style="font-weight: 700; color: #fbbf24; margin-top: 10px;">Click a star to rate</div>
         <input type="hidden" id="modalMovieId" value="">
       </div>
     </div>
   </div>
 
   <!-- ML Evaluation & Architecture Modal -->
-  <div id="metricsModal" class="modal-overlay">
-    <div class="modal-card">
+  <div id="metricsModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-cinematic-card" style="max-width: 860px; padding: 28px;">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <span class="modal-badge">Machine Learning Engine</span>
-          <h2>Model Evaluation & System Architecture</h2>
+          <span class="modal-badge" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7;">Machine Learning Engine</span>
+          <h2>Model Evaluation &amp; Recommendation Architecture</h2>
         </div>
-        <button class="modal-close" id="closeMetricsBtn">&times;</button>
+        <button class="modal-close-btn" id="closeMetricsBtn" style="position: static;">&times;</button>
       </div>
 
-      <div class="modal-body">
+      <div class="modal-body" style="padding-top: 10px;">
         <div class="metrics-grid">
           <div class="metric-box">
             <span class="metric-label">Rating Prediction RMSE</span>
@@ -313,25 +611,25 @@
           </div>
         </div>
 
-        <div class="chart-wrapper">
-          <h3>Algorithm Performance Comparison</h3>
+        <div class="chart-wrapper" style="margin-top: 24px;">
+          <h3 style="font-size: 1.05rem; margin-bottom: 12px; color: #fff;">Algorithm Accuracy &amp; Ranking Performance</h3>
           <canvas id="metricsChart" height="180"></canvas>
         </div>
 
-        <div class="algorithms-comparison">
+        <div class="algorithms-comparison" style="margin-top: 24px;">
           <div class="algo-card">
             <h4>Content-Based Filtering</h4>
-            <p>Uses TF-IDF metadata vectorization and Cosine Similarity over genres, plot tags, and titles.</p>
-            <span class="badge-tag">Zero Cold-Start for New Movies</span>
+            <p>TF-IDF metadata vectorization and Cosine Similarity over genres, plot synopses, and keywords. Resolves cold-start for newly released cinema.</p>
+            <span class="badge-tag">Zero Cold-Start</span>
           </div>
           <div class="algo-card">
             <h4>Collaborative Filtering</h4>
-            <p>TruncatedSVD Matrix Factorization (30 latent factors) learning audience tastes across 104,000+ ratings.</p>
-            <span class="badge-tag">Discovers Latent Taste Synergy</span>
+            <p>TruncatedSVD Matrix Factorization (30 latent factors) learning audience tastes across 104,000+ ratings to surface serendipitous gems.</p>
+            <span class="badge-tag">Latent Taste Synergy</span>
           </div>
           <div class="algo-card active-card">
             <h4>Hybrid Recommendation Engine</h4>
-            <p>Dynamic ensemble combining Content-based affinity, SVD predictions, genre preferences, and Bayesian quality scores.</p>
+            <p>Production ensemble combining Content-based affinity, SVD predictions, genre preferences, and Bayesian quality scores.</p>
             <span class="badge-tag active-tag">Production Engine</span>
           </div>
         </div>
@@ -339,37 +637,63 @@
     </div>
   </div>
 
-  <!-- Footer -->
+  <!-- Professional Footer (Requirement 12) -->
   <footer class="app-footer">
     <div class="footer-container">
       <div class="footer-col">
         <span class="footer-logo">CineMatch<span class="text-accent">AI</span></span>
-        <p>AI-Powered Movie Recommendation System built with TF-IDF, Matrix Factorization, and authentic theatrical posters.</p>
-        <p class="dataset-attr">Data source: MovieLens 100K + Indian Cinema Collection.</p>
+        <p>Intelligent movie discovery &amp; personalized recommendation platform built with Machine Learning, Natural Language Processing, and authentic theatrical posters.</p>
+        <p class="dataset-attr" style="margin-top: 10px; font-size: 0.8rem; color: #64748b;">
+          Dataset: MovieLens 100K + Curated Indian Cinema Collection (Tollywood, Bollywood, Kollywood).
+        </p>
       </div>
+
       <div class="footer-col">
         <h4>Navigation</h4>
         <ul>
-          <li><a href="#personalized">Personalized Recommendations</a></li>
-          <li><a href="#indian">Tollywood & Bollywood</a></li>
-          <li><a href="#popular">Trending Catalog</a></li>
-          <li><a href="https://github.com/kotarohith08-byte/Movie-Suggestions" target="_blank">GitHub Repository</a></li>
+          <li><a href="#discover">Discover Movies</a></li>
+          <li><a href="#top10">Top 10 Contents Today</a></li>
+          <li><a href="#ai-assistant">Ask CineMatch AI</a></li>
+          <li><a href="#moods">Choose Your Mood</a></li>
+          <li><a href="#personalized">Personalized Picks</a></li>
+          <li><a href="#indian">Indian Cinema</a></li>
         </ul>
       </div>
+
       <div class="footer-col">
-        <h4>System Status</h4>
-        <div class="status-item"><span class="status-indicator"></span> 10,742 Movies Indexed (100% Full Catalog)</div>
-        <div class="status-item"><span class="status-indicator"></span> 10,729+ Authentic Posters Live</div>
-        <div class="status-item"><span class="status-indicator"></span> 150,000+ Ratings Analyzed</div>
+        <h4>Machine Learning Methodology</h4>
+        <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.6; margin-bottom: 12px;">
+          CineMatch AI uses a multi-layered hybrid recommendation pipeline:
+        </p>
+        <ul style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
+          <li><strong>TF-IDF Vectorizer:</strong> Analyzes genre and synopsis tokens.</li>
+          <li><strong>SVD Matrix Factorization:</strong> 30 latent factors across ratings.</li>
+          <li><strong>Bayesian Weighted Rating:</strong> Prevents low-vote bias.</li>
+          <li><strong>Offline Client-Side NLP:</strong> Zero external latency or API keys.</li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>System Status &amp; GitHub</h4>
+        <div class="status-item"><span class="status-indicator"></span> 10,742 Movies Live in Catalog</div>
+        <div class="status-item"><span class="status-indicator"></span> 10,729 Authentic Posters Loaded</div>
+        <div class="status-item"><span class="status-indicator"></span> 1,000+ Indian Cinema Blockbusters</div>
+        <div class="status-item"><span class="status-indicator"></span> GitHub Pages 100% Offline Compatible</div>
+        <div style="margin-top: 16px;">
+          <a href="https://github.com/kotarohith08-byte/Movie-Suggestions" target="_blank" rel="noopener" class="btn-hero-secondary" style="padding: 8px 16px; font-size: 0.85rem;">
+            <span>GitHub Repository &rarr;</span>
+          </a>
+        </div>
       </div>
     </div>
+
     <div class="footer-bottom">
-      <p>&copy; CineMatch AI. Hosted on GitHub Pages &amp; Windows Local.</p>
+      <p>&copy; 2026 CineMatch AI. Built for movie lovers. Hosted on GitHub Pages &amp; Local Python Flask Server.</p>
     </div>
   </footer>
 
-  <!-- Embedded Dataset & Client-Side Engine -->
-  <script src="static/js/static_data.js?v=20261029-kollywood-415"></script>
-  <script src="static/js/site.js?v=20261029-kollywood-415"></script>
+  <!-- Static Dataset & Application Engine -->
+  <script src="static/js/static_data.js?v=20261106-streaming-v2"></script>
+  <script src="static/js/site.js?v=20261106-streaming-v2"></script>
 </body>
 </html>
