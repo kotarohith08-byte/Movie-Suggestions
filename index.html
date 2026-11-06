@@ -125,19 +125,14 @@
         </p>
 
         <div class="hero-cta-group">
-          <button type="button" class="btn-hero-primary" id="heroWatchTrailerBtn">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            <span>Watch Trailer</span>
+          <button type="button" class="btn-hero-primary" id="heroDetailsBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>View Movie Details</span>
           </button>
           
           <button type="button" class="btn-hero-secondary" id="heroWatchlistBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
             <span id="heroWatchlistBtnText">Add to Watchlist</span>
-          </button>
-
-          <button type="button" class="btn-hero-secondary" id="heroDetailsBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            <span>Details</span>
           </button>
 
           <a href="#ai-assistant" class="btn-hero-ai">
@@ -513,19 +508,6 @@
       <!-- Modal Body -->
       <div class="modal-main-body" id="modalDetailBody">
         <!-- Rendered dynamically via site.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Trailer Video Modal (Responsive 16:9 Player) -->
-  <div id="trailerModal" class="modal-overlay" role="dialog" aria-modal="true">
-    <div class="trailer-modal-card">
-      <div class="modal-header" style="padding: 16px 20px; background: #111726; margin: 0;">
-        <h3 id="trailerModalTitle" style="font-size: 1.1rem; color: #fff;">Official Trailer</h3>
-        <button class="modal-close-btn" id="closeTrailerModalBtn" style="position: static;">&times;</button>
-      </div>
-      <div class="video-responsive-wrap">
-        <iframe id="trailerIframe" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
     </div>
   </div>

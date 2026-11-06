@@ -8,8 +8,7 @@
  * 5. Advanced Discovery & Multi-Filtering: genre, industry, era, rating, sort, autocomplete (Requirement 5)
  * 6. Personal Watchlist, Favourites, Watched, and Star Ratings persisted in localStorage (Requirement 6)
  * 7. Cinematic Movie Details Modal with Hero Backdrop, Synopsis, Director, Circular Cast Avatars (Image 2 Inspiration)
- * 8. Trailer Video Modal with YouTube embed (Requirement 7)
- * 9. Transparent, Explainable AI Recommendation tags (Requirement 8)
+ * 8. Transparent, Explainable AI Recommendation tags (Requirement 8)
  * 10. ML Metrics Modal with Chart.js (Requirement 9)
  */
 
@@ -364,14 +363,13 @@
     });
 
     // Hero Action Buttons
-    const trailerBtn = document.getElementById("heroWatchTrailerBtn");
     const watchlistBtn = document.getElementById("heroWatchlistBtn");
     const detailsBtn = document.getElementById("heroDetailsBtn");
 
-    if (trailerBtn) {
-      trailerBtn.onclick = () => {
+    if (detailsBtn) {
+      detailsBtn.onclick = () => {
         const cur = resolvedHeroMovies[state.currentHeroIndex];
-        if (cur) openTrailerModal(cur.title, cur.year);
+        if (cur) openDetailModal(cur.id);
       };
     }
 
@@ -382,13 +380,6 @@
         toggleWatchlist(cur.id);
         const wText = document.getElementById("heroWatchlistBtnText");
         if (wText) wText.textContent = state.watchlist.has(cur.id) ? "✓ In Watchlist" : "Add to Watchlist";
-      };
-    }
-
-    if (detailsBtn) {
-      detailsBtn.onclick = () => {
-        const cur = resolvedHeroMovies[state.currentHeroIndex];
-        if (cur) openDetailModal(cur.id);
       };
     }
 
@@ -1388,11 +1379,6 @@
       bodyEl.innerHTML = `
         <!-- Action Bar (Image 2 Inspiration) -->
         <div class="modal-action-bar">
-          <button type="button" class="btn-modal-trailer" id="btnModalWatchTrailer">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            <span>Watch the Trailer</span>
-          </button>
-
           <button type="button" class="btn-modal-action ${inWatchlist ? 'active-watchlist' : ''}" id="btnModalToggleWatchlist">
             <svg viewBox="0 0 24 24" fill="${inWatchlist ? '#fff' : 'none'}" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
             <span>${inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}</span>
@@ -1475,12 +1461,9 @@
       `;
 
       // Attach Modal Action Listeners
-      const trailerBtn = document.getElementById("btnModalWatchTrailer");
       const watchlistBtn = document.getElementById("btnModalToggleWatchlist");
       const watchedBtn = document.getElementById("btnModalToggleWatched");
       const favBtn = document.getElementById("btnModalToggleFav");
-
-      if (trailerBtn) trailerBtn.onclick = () => openTrailerModal(movie.title, movie.year);
 
       if (watchlistBtn) {
         watchlistBtn.onclick = () => {
@@ -1545,32 +1528,7 @@
   }
 
   // =========================================================================
-  // 14. Trailer Video Modal
-  // =========================================================================
-  function openTrailerModal(title, year) {
-    const modal = document.getElementById("trailerModal");
-    const iframe = document.getElementById("trailerIframe");
-    const titleEl = document.getElementById("trailerModalTitle");
-    if (!modal || !iframe) return;
-
-    if (titleEl) titleEl.textContent = `${title} (${year || "Trailer"}) - Official Theatrical Trailer`;
-
-    // Embed YouTube trailer query securely
-    const searchQuery = encodeURIComponent(`${title} ${year || ""} official trailer`);
-    iframe.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${searchQuery}&autoplay=1`;
-
-    modal.classList.add("active");
-  }
-
-  function closeTrailerModal() {
-    const modal = document.getElementById("trailerModal");
-    const iframe = document.getElementById("trailerIframe");
-    if (iframe) iframe.src = "";
-    if (modal) modal.classList.remove("active");
-  }
-
-  // =========================================================================
-  // 15. Watchlist & Favourites Suite
+  // 14. Watchlist & Favourites Suite
   // =========================================================================
   function toggleWatchlist(movieId) {
     const mid = Number(movieId);
@@ -1696,12 +1654,6 @@
       closeDetailBtn.onclick = () => detailModal.classList.remove("active");
     }
 
-    // Trailer Modal
-    const closeTrailerBtn = document.getElementById("closeTrailerModalBtn");
-    if (closeTrailerBtn) {
-      closeTrailerBtn.onclick = closeTrailerModal;
-    }
-
     // Quick Rating Modal
     const ratingModal = document.getElementById("ratingModal");
     const closeRatingBtn = document.getElementById("closeRatingModalBtn");
@@ -1824,10 +1776,9 @@
       }
 
       // 5. Close modals on backdrop click
-      [detailModal, trailerModal, watchlistModal, ratingModal, metricsModal].forEach(m => {
+      [detailModal, watchlistModal, ratingModal, metricsModal].forEach(m => {
         if (m && e.target === m) {
-          if (m === trailerModal) closeTrailerModal();
-          else m.classList.remove("active");
+          m.classList.remove("active");
         }
       });
     });
@@ -1835,7 +1786,6 @@
     // ESC key closes any open modal
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        if (trailerModal && trailerModal.classList.contains("active")) closeTrailerModal();
         [detailModal, watchlistModal, ratingModal, metricsModal].forEach(m => {
           if (m) m.classList.remove("active");
         });
