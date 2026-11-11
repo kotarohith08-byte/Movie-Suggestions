@@ -36,6 +36,12 @@ if os.path.exists(links_path):
         import pandas as pd
         _ldf = pd.read_csv(links_path).dropna(subset=["movieId", "tmdbId"])
         tmdb_map = dict(zip(_ldf["movieId"].astype(int), _ldf["tmdbId"].astype(int)))
+        # Include verified Indian Cinema TMDB mappings
+        try:
+            from export_static_site import INDIAN_TMDB_MAP
+            tmdb_map.update(INDIAN_TMDB_MAP)
+        except Exception:
+            pass
     except Exception as e:
         print(f"[!] Warning reading links.csv: {e}")
 

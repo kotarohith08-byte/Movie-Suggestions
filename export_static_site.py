@@ -91,12 +91,12 @@ INDIAN_TMDB_MAP = {
     200361: 531309,  # Super 30
     200375: 785538,  # Fighter
     200376: 624860,  # Sooryavanshi
-    201001: 1111873, # Maharaja
+    201001: 1118224, # Maharaja
     201002: 1094556, # Amaran
     201003: 885110,  # Jai Bhim
     201004: 458305,  # Vikram Vedha
     201005: 535292,  # Ratsasan
-    201006: 736074,  # Vikram
+    201006: 743563,  # Vikram
     201007: 633908,  # Kaithi
     201008: 553600,  # 96
     201009: 649609,  # Soorarai Pottru
