@@ -128,6 +128,15 @@
   const CREDITS_CACHE = new Map();
   const PERSON_CACHE = new Map();
 
+  // Pre-seed CREDITS_CACHE with verified prebaked Indian blockbusters
+  if (typeof window !== "undefined" && window.PREBAKED_INDIAN_CREDITS) {
+    try {
+      for (const [k, v] of Object.entries(window.PREBAKED_INDIAN_CREDITS)) {
+        CREDITS_CACHE.set(Number(k), v);
+      }
+    } catch (e) {}
+  }
+
   // Helper to generate clean, high-contrast SVG Avatar with Initials
   function getAvatarPlaceholderSvg(name, size = 150) {
     const cleanName = (name || "Cast Member").trim();
@@ -151,7 +160,7 @@
           <stop offset="100%" stop-color="hsl(${hue2}, 70%, 14%)"/>
         </linearGradient>
       </defs>
-      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="url(#g_${Math.abs(hash)})" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="url(#g_${Math.abs(hash)})" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
       <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${Math.round(size * 0.38)}" font-weight="700" fill="#ffffff" letter-spacing="1">${initials}</text>
     </svg>`;
 
@@ -173,6 +182,16 @@
       }
     }
     return null;
+  }
+
+  // Normalize diacritics and clean titles for TMDB search
+  function cleanSearchTitle(t) {
+    return (t || "")
+      .replace(/\s*\(\d{4}\)\s*$/, "")
+      .replace(/\s*,\s*The$/i, "")
+      .replace(/\s*,\s*A$/i, "")
+      .replace(/ā/g, "a").replace(/ī/g, "i").replace(/ū/g, "u").replace(/ō/g, "o")
+      .trim();
   }
 
   // Fetch verified movie credits (directors & principal cast) from TMDB
@@ -199,17 +218,31 @@
       data = await fetchTmdbJson(`/movie/${tmdbMovieId}?append_to_response=credits`);
     }
 
-    // 2. If not found or tmdbId was missing, search TMDB by title & year
+    // 2. If not found or tmdbId was missing, search TMDB by clean title
     if (!data || !data.credits) {
-      const cleanTitle = (movie.title || "")
-        .replace(/\s*\(\d{4}\)\s*$/, "")
-        .replace(/\s*,\s*The$/i, "")
-        .replace(/\s*,\s*A$/i, "")
-        .trim();
+      const cleanTitle = cleanSearchTitle(movie.title);
       
-      const searchRes = await fetchTmdbJson(`/search/movie?query=${encodeURIComponent(cleanTitle)}${movie.year ? `&year=${movie.year}` : ""}`);
+      // Stage A: Search with release year
+      let searchRes = movie.year 
+        ? await fetchTmdbJson(`/search/movie?query=${encodeURIComponent(cleanTitle)}&year=${movie.year}`)
+        : null;
+
+      // Stage B: If no results with year, search title only
+      if (!searchRes || !searchRes.results || searchRes.results.length === 0) {
+        searchRes = await fetchTmdbJson(`/search/movie?query=${encodeURIComponent(cleanTitle)}`);
+      }
+
       if (searchRes && searchRes.results && searchRes.results.length > 0) {
-        tmdbMovieId = searchRes.results[0].id;
+        const results = searchRes.results;
+        // Prioritize Indian language match if this title belongs to Indian Cinema
+        const isIndian = movie.industry && movie.industry !== "Global";
+        let picked = results[0];
+        if (isIndian) {
+          const matchLang = results.find(r => ["hi", "te", "ta", "ml", "kn", "bn", "mr", "pa"].includes(r.original_language));
+          if (matchLang) picked = matchLang;
+        }
+
+        tmdbMovieId = picked.id;
         data = await fetchTmdbJson(`/movie/${tmdbMovieId}?append_to_response=credits`);
       }
     }
@@ -229,13 +262,14 @@
         job: "Director"
       }));
 
-    // Extract verified principal cast (top 12)
+    // Extract verified principal cast (up to 16 members, including both male and female actors)
     const rawCast = data.credits.cast || [];
-    const cast = rawCast.slice(0, 12).map(a => ({
+    const cast = rawCast.slice(0, 16).map(a => ({
       id: a.id,
       name: a.name,
       character: a.character || "Cast Member",
       profile_path: a.profile_path ? `${TMDB_IMG_BASE}/w185${a.profile_path}` : null,
+      gender: a.gender,
       order: a.order
     }));
 
@@ -257,6 +291,7 @@
 
     return result;
   }
+
 
   // Fetch verified person details (biography, birthday, filmography) from TMDB
   async function fetchPersonDetails(personId) {
@@ -1555,11 +1590,22 @@
           </div>
         </div>
 
-        <!-- Cast Avatars Section (Image 2 Inspiration) -->
+        <!-- Dedicated Director Spotlight Section (Image 2 Streaming Inspiration) -->
+        <div class="modal-director-section" id="modalDirectorSection">
+          <h3>Directed By</h3>
+          <div class="directors-spotlight-row" id="modalDirectorSpotlight">
+            <span class="skeleton-line" style="display:inline-block; width:170px; height:46px; border-radius:9999px;"></span>
+          </div>
+        </div>
+
+        <!-- Principal Cast & Actresses Section (Image 2 Streaming Inspiration) -->
         <div class="modal-cast-section">
-          <h3>Principal Cast</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0;">Principal Cast &amp; Stars</h3>
+            <span class="cast-count-badge" id="modalCastCountBadge" style="font-size:0.75rem; color:var(--text-muted);">Verified TMDB Cast</span>
+          </div>
           <div class="cast-avatars-row" id="modalCastContainer">
-            ${[1, 2, 3, 4, 5, 6].map(() => `
+            ${[1, 2, 3, 4, 5, 6, 7, 8].map(() => `
               <div class="skeleton-avatar-item">
                 <div class="skeleton-circle"></div>
                 <div class="skeleton-line"></div>
@@ -1636,8 +1682,10 @@
 
   // Asynchronously load and render verified credits (directors & cast)
   async function loadCreditsForDetailModal(movie, modal) {
+    const dirSpotlight = document.getElementById("modalDirectorSpotlight");
     const dirContainer = document.getElementById("modalDirectorContainer");
     const castContainer = document.getElementById("modalCastContainer");
+    const castBadge = document.getElementById("modalCastCountBadge");
     const synopsisText = document.getElementById("modalSynopsisText");
     const heroHeader = document.getElementById("modalHeroHeader");
 
@@ -1658,34 +1706,55 @@
           synopsisText.textContent = credits.overview;
         }
 
-        // Render verified directors with authentic photos
-        if (dirContainer) {
-          if (credits.directors && credits.directors.length > 0) {
-            dirContainer.innerHTML = `
-              <div class="directors-list-wrap">
-                ${credits.directors.map(d => `
-                  <div class="director-card-pill" data-person-id="${d.id}" data-person-name="${escapeHtml(d.name)}" data-person-role="Director" data-person-img="${d.profile_path || ''}" title="View ${escapeHtml(d.name)} profile">
-                    <img src="${d.profile_path || getAvatarPlaceholderSvg(d.name, 72)}" alt="${escapeHtml(d.name)}" class="director-thumb-circle" onerror="this.onerror=null;this.src='${getAvatarPlaceholderSvg(d.name, 72)}'">
-                    <div class="director-info-text">
-                      <span class="director-name-label">${escapeHtml(d.name)}</span>
-                      <span class="director-role-tag">Director</span>
-                    </div>
-                  </div>
-                `).join("")}
+        const dirs = credits.directors || [];
+
+        // 1. Render Dedicated Director Spotlight
+        if (dirSpotlight) {
+          if (dirs.length > 0) {
+            dirSpotlight.innerHTML = dirs.map(d => `
+              <div class="director-spotlight-card" data-person-id="${d.id}" data-person-name="${escapeHtml(d.name)}" data-person-role="Director" data-person-img="${d.profile_path || ''}" title="View ${escapeHtml(d.name)} profile & filmography">
+                <img src="${d.profile_path || getAvatarPlaceholderSvg(d.name, 90)}" alt="${escapeHtml(d.name)}" class="director-spotlight-avatar" onerror="this.onerror=null;this.src='${getAvatarPlaceholderSvg(d.name, 90)}'">
+                <div class="director-spotlight-meta">
+                  <span class="director-spotlight-name">${escapeHtml(d.name)}</span>
+                  <span class="director-spotlight-badge">Director</span>
+                </div>
+              </div>
+            `).join("");
+          } else if (movie.director) {
+            dirSpotlight.innerHTML = `
+              <div class="director-spotlight-card" title="${escapeHtml(movie.director)}">
+                <img src="${getAvatarPlaceholderSvg(movie.director, 90)}" alt="${escapeHtml(movie.director)}" class="director-spotlight-avatar">
+                <div class="director-spotlight-meta">
+                  <span class="director-spotlight-name">${escapeHtml(movie.director)}</span>
+                  <span class="director-spotlight-badge">Director</span>
+                </div>
               </div>
             `;
-          } else if (movie.director) {
-            dirContainer.innerHTML = `<span style="color:#fff; font-weight:600;">${escapeHtml(movie.director)}</span>`;
           } else {
-            dirContainer.innerHTML = `<span style="color:var(--text-muted);">Information unavailable</span>`;
+            dirSpotlight.innerHTML = `<span style="color:var(--text-muted); font-size:0.85rem;">Director details currently unavailable</span>`;
           }
         }
 
-        // Render verified principal cast with authentic photos & character roles
+        // 2. Render Director text inside Credits Box
+        if (dirContainer) {
+          if (dirs.length > 0) {
+            dirContainer.textContent = dirs.map(d => d.name).join(", ");
+          } else if (movie.director) {
+            dirContainer.textContent = movie.director;
+          } else {
+            dirContainer.textContent = "Information unavailable";
+          }
+        }
+
+        // 3. Render verified principal cast (both male and female actors) with authentic photos
         if (castContainer) {
-          if (credits.cast && credits.cast.length > 0) {
-            castContainer.innerHTML = credits.cast.map(c => `
-              <div class="cast-avatar-item" data-person-id="${c.id}" data-person-name="${escapeHtml(c.name)}" data-person-role="${escapeHtml(c.character)}" data-person-img="${c.profile_path || ''}" title="View ${escapeHtml(c.name)} profile">
+          const castList = credits.cast || [];
+          if (castBadge) {
+            castBadge.textContent = `${castList.length} Verified Cast Members`;
+          }
+          if (castList.length > 0) {
+            castContainer.innerHTML = castList.map(c => `
+              <div class="cast-avatar-item" data-person-id="${c.id}" data-person-name="${escapeHtml(c.name)}" data-person-role="${escapeHtml(c.character)}" data-person-img="${c.profile_path || ''}" title="View ${escapeHtml(c.name)} profile & filmography">
                 <img src="${c.profile_path || getAvatarPlaceholderSvg(c.name, 150)}" alt="${escapeHtml(c.name)}" class="cast-avatar-circle" onerror="this.onerror=null;this.src='${getAvatarPlaceholderSvg(c.name, 150)}'">
                 <div class="cast-actor-name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>
                 <div class="cast-character-role" title="${escapeHtml(c.character)}">${escapeHtml(c.character)}</div>
@@ -1698,33 +1767,46 @@
         }
       } else {
         // Fallback for offline or non-TMDB titles
-        if (dirContainer) {
-          dirContainer.innerHTML = movie.director
-            ? `<span style="color:#fff; font-weight:600;">${escapeHtml(movie.director)}</span>`
+        if (dirSpotlight) {
+          dirSpotlight.innerHTML = movie.director
+            ? `
+              <div class="director-spotlight-card" title="${escapeHtml(movie.director)}">
+                <img src="${getAvatarPlaceholderSvg(movie.director, 90)}" alt="${escapeHtml(movie.director)}" class="director-spotlight-avatar">
+                <div class="director-spotlight-meta">
+                  <span class="director-spotlight-name">${escapeHtml(movie.director)}</span>
+                  <span class="director-spotlight-badge">Director</span>
+                </div>
+              </div>
+            `
             : `<span style="color:var(--text-muted);">Information unavailable</span>`;
+        }
+        if (dirContainer) {
+          dirContainer.textContent = movie.director || "Information unavailable";
         }
         if (castContainer) {
           castContainer.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; padding:10px 0;">Principal cast details currently unavailable.</div>`;
         }
       }
 
-      // Attach click listeners to directors and cast items to open actor profile modal
+      // Attach click listeners to directors and cast items to open actor/director profile modal
       if (modal) {
-        modal.querySelectorAll(".cast-avatar-item, .director-card-pill").forEach(el => {
+        modal.querySelectorAll(".cast-avatar-item, .director-spotlight-card").forEach(el => {
           el.onclick = (e) => {
             e.stopPropagation();
             const pid = Number(el.dataset.personId);
             const pname = el.dataset.personName;
             const prole = el.dataset.personRole;
             const pimg = el.dataset.personImg;
-            openActorModal(pid, pname, pimg, prole, movie.title);
+            if (pid) {
+              openActorModal(pid, pname, pimg, prole, movie.title);
+            }
           };
         });
       }
     } catch (err) {
       console.warn("Failed loading credits:", err);
       if (dirContainer) {
-        dirContainer.innerHTML = movie.director ? `<span style="color:#fff;">${escapeHtml(movie.director)}</span>` : "Information unavailable";
+        dirContainer.textContent = movie.director || "Information unavailable";
       }
       if (castContainer) {
         castContainer.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem;">Cast details unavailable.</div>`;

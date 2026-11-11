@@ -405,6 +405,17 @@ def health():
 _credits_cache = {}
 _person_cache = {}
 
+# Pre-seed _credits_cache from verified Indian credits cache
+_cached_credits_path = os.path.join(BASE_DIR, "data", "indian_credits_cache.json")
+if os.path.exists(_cached_credits_path):
+    try:
+        with open(_cached_credits_path, "r", encoding="utf-8") as f:
+            for k, v in json.load(f).items():
+                _credits_cache[int(k)] = v
+    except Exception:
+        pass
+
+
 @app.route("/api/movie/<int:movie_id>/credits", methods=["GET"])
 def api_movie_credits(movie_id: int):
     """

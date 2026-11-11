@@ -1655,41 +1655,123 @@ button, input, select, textarea {
   font-weight: 600;
 }
 
-/* Cast Avatars Section (Image 2 Style) */
+/* =========================================================================
+   Director Section & Spotlight in Movie Details Modal
+   ========================================================================= */
+.modal-director-section {
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+.modal-director-section h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.directors-spotlight-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+.director-spotlight-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: 9999px;
+  padding: 6px 18px 6px 6px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+.director-spotlight-card:hover {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+  border-color: #06b6d4;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
+}
+.director-spotlight-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #06b6d4;
+  background: #1e293b;
+  flex-shrink: 0;
+}
+.director-spotlight-meta {
+  display: flex;
+  flex-direction: column;
+}
+.director-spotlight-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.director-spotlight-badge {
+  font-size: 0.72rem;
+  color: #38bdf8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Cast Avatars Section (Image 2 Streaming Aesthetics) */
 .modal-cast-section {
   margin-bottom: 32px;
 }
-.modal-cast-section h3 {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 16px;
-}
 .cast-avatars-row {
   display: flex;
-  gap: 20px;
+  gap: 18px;
   overflow-x: auto;
-  padding-bottom: 10px;
+  padding: 8px 4px 16px 4px;
+  scroll-behavior: smooth;
+}
+.cast-avatars-row::-webkit-scrollbar {
+  height: 6px;
+}
+.cast-avatars-row::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
 }
 .cast-avatar-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  width: 95px;
+  width: 100px;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.cast-avatar-item:hover {
+  transform: translateY(-4px);
 }
 .cast-avatar-circle {
-  width: 70px;
-  height: 70px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   object-fit: cover;
   background: #1e293b;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  margin-bottom: 8px;
+  border: 2.5px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 10px;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.cast-avatar-item:hover .cast-avatar-circle {
+  border-color: #a855f7;
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.5);
 }
 .cast-actor-name {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #fff;
   line-height: 1.2;
@@ -1701,11 +1783,25 @@ button, input, select, textarea {
 .cast-character-role {
   font-size: 0.72rem;
   color: var(--text-muted);
-  line-height: 1.2;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
+  margin-top: 2px;
+}
+.cast-click-hint {
+  display: inline-block;
+  font-size: 0.65rem;
+  color: #38bdf8;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: all 0.2s ease;
+  margin-top: 3px;
+}
+.cast-avatar-item:hover .cast-click-hint {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Similar Titles in Modal */
