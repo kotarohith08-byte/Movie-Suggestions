@@ -20,6 +20,101 @@ posters_cache = json.load(open(os.path.join(DATA_DIR, "posters_cache.json"), enc
 movies_df = pd.read_csv(os.path.join(DATA_DIR, "processed_movies.csv"))
 top_sims = joblib.load(os.path.join(MODELS_DIR, "content_top_sims.joblib"))
 
+# Load TMDB ID mappings from links.csv
+links_path = os.path.join(DATA_DIR, "links.csv")
+links_map = {}
+if os.path.exists(links_path):
+    links_df = pd.read_csv(links_path).dropna(subset=["tmdbId"])
+    links_map = dict(zip(links_df["movieId"].astype(int), links_df["tmdbId"].astype(int)))
+
+# Verified TMDB IDs for Indian Cinema blockbusters
+INDIAN_TMDB_MAP = {
+    200001: 579974,  # RRR
+    200002: 256040,  # Baahubali: The Beginning
+    200003: 350312,  # Baahubali 2: The Conclusion
+    200004: 801688,  # Kalki 2898 AD
+    200005: 690957,  # Pushpa: The Rise
+    200006: 912649,  # Pushpa 2: The Rule
+    200007: 939243,  # Hanu-Man
+    200008: 897087,  # Salaar: Part 1 - Ceasefire
+    200009: 980489,  # Devara: Part 1
+    200010: 1142564, # Saripodhaa Sanivaaram
+    200011: 1073867, # Hi Nanna
+    200012: 984180,  # Sita Ramam
+    200013: 949423,  # Karthikeya 2
+    200014: 799883,  # Major
+    200015: 618355,  # Ala Vaikunthapurramuloo
+    200061: 256040,  # Baahubali: The Beginning
+    200062: 350312,  # Baahubali 2: The Conclusion
+    200063: 801688,  # Kalki 2898-AD
+    200064: 912649,  # Pushpa 2 - The Rule
+    200068: 597219,  # Saaho
+    200301: 182811,  # The Lunchbox
+    200302: 1124564, # KILL
+    200303: 84175,   # Gangs of Wasseypur - Part 1
+    200305: 585268,  # War
+    200306: 186676,  # Chennai Express
+    200307: 271714,  # Bajirao Mastani
+    200308: 127532,  # OMG: Oh My God!
+    200309: 353569,  # Dilwale
+    200310: 132316,  # Jab Tak Hai Jaan
+    200311: 568379,  # Period. End of Sentence.
+    200312: 411088,  # Pink
+    200313: 491473,  # Pad Man
+    200314: 412154,  # Dear Zindagi
+    200315: 84178,   # Dhoom 3
+    200316: 381696,  # Sultan
+    200317: 379854,  # Neerja
+    200318: 160718,  # Special 26
+    200319: 283587,  # Happy New Year
+    200320: 121731,  # Talaash
+    200321: 379149,  # Raees
+    200322: 338766,  # Fan
+    200324: 505192,  # Sanju
+    200325: 351044,  # Airlift
+    200326: 359412,  # Talvar
+    200327: 287590,  # Bang Bang!
+    200328: 724495,  # Gangubai Kathiawadi
+    200330: 441031,  # Secret Superstar
+    200331: 1075676, # Lost Ladies (Laapataa Ladies)
+    200332: 380536,  # Kapoor & Sons
+    200336: 574475,  # Badla
+    200339: 116149,  # Ek Tha Tiger
+    200340: 386591,  # Udta Punjab
+    200344: 310860,  # Tamasha
+    200345: 379029,  # Sanam Teri Kasam
+    200346: 496331,  # Brahmāstra Part One: Shiva
+    200353: 565310,  # Kabir Singh
+    200355: 87826,   # Agneepath
+    200358: 153158,  # Krrish 3
+    200360: 468225,  # Tiger Zinda Hai
+    200361: 531309,  # Super 30
+    200375: 785538,  # Fighter
+    200376: 624860,  # Sooryavanshi
+    201001: 1111873, # Maharaja
+    201002: 1094556, # Amaran
+    201003: 885110,  # Jai Bhim
+    201004: 458305,  # Vikram Vedha
+    201005: 535292,  # Ratsasan
+    201006: 736074,  # Vikram
+    201007: 633908,  # Kaithi
+    201008: 553600,  # 96
+    201009: 649609,  # Soorarai Pottru
+    201010: 540503,  # Super Deluxe
+    201011: 1041513, # The Elephant Whisperers
+    201012: 395990,  # 24
+    201013: 949229,  # Leo
+    201014: 373023,  # 2.0
+    201015: 460135,  # Mersal
+    201016: 127867,  # Thuppakki
+    201017: 460846,  # Vada Chennai
+    201018: 582885,  # Asuran
+    201019: 645541,  # Master
+    201020: 980078,  # Jailer
+    201021: 271404,  # Kaththi
+    201022: 370663   # Theri
+}
+
 movies_list = []
 
 for _, row in movies_df.iterrows():
@@ -36,8 +131,11 @@ for _, row in movies_df.iterrows():
 
     industry = "Kollywood" if is_kollywood else ("Tollywood" if is_tollywood else ("Bollywood" if is_bollywood else "Global"))
 
+    tmdb_id = INDIAN_TMDB_MAP.get(mid) or links_map.get(mid)
+
     movies_list.append({
         "id": mid,
+        "tmdbId": int(tmdb_id) if tmdb_id else None,
         "title": str(row["clean_title"]),
         "full_title": str(row["title"]),
         "year": int(row["year"]) if pd.notnull(row["year"]) else None,

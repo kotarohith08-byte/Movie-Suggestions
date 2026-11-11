@@ -395,6 +395,151 @@ def health():
     })
 
 
+# Cache for authentic credits and person queries
+_credits_cache = {}
+_person_cache = {}
+
+@app.route("/api/movie/<int:movie_id>/credits", methods=["GET"])
+def api_movie_credits(movie_id: int):
+    """
+    Returns verified director(s), authentic cast members with original TMDB photos,
+    synopsis, and backdrop for any movie.
+    """
+    if movie_id in _credits_cache:
+        return jsonify(_credits_cache[movie_id])
+
+    t_id = tmdb_map.get(movie_id)
+    movie = recommender.get_movie_details(movie_id)
+
+    if not t_id and movie:
+        clean_title = movie["clean_title"]
+        try:
+            import requests
+            r = requests.get(
+                f"https://api.tmdb.org/3/search/movie?query={requests.utils.quote(clean_title)}" +
+                (f"&year={movie['year']}" if movie.get("year") else "") +
+                f"&api_key={TMDB_API_KEY}",
+                timeout=3.0
+            )
+            if r.status_code == 200:
+                results = r.json().get("results", [])
+                if results:
+                    t_id = results[0]["id"]
+        except Exception:
+            pass
+
+    if not t_id:
+        # Fallback response for unmapped movies
+        return jsonify({
+            "movieId": movie_id,
+            "tmdbId": None,
+            "directors": [],
+            "cast": [],
+            "backdrop": None,
+            "overview": None
+        })
+
+    try:
+        import requests
+        r = requests.get(
+            f"https://api.tmdb.org/3/movie/{t_id}?append_to_response=credits&api_key={TMDB_API_KEY}",
+            timeout=4.0
+        )
+        if r.status_code == 200:
+            data = r.json()
+            crew = data.get("credits", {}).get("crew", [])
+            directors = [
+                {
+                    "id": c["id"],
+                    "name": c["name"],
+                    "profile_path": f"https://image.tmdb.org/t/p/w185{c['profile_path']}" if c.get("profile_path") else None,
+                    "job": "Director"
+                }
+                for c in crew if c.get("job") == "Director"
+            ]
+            raw_cast = data.get("credits", {}).get("cast", [])
+            cast = [
+                {
+                    "id": a["id"],
+                    "name": a["name"],
+                    "character": a.get("character") or "Cast Member",
+                    "profile_path": f"https://image.tmdb.org/t/p/w185{a['profile_path']}" if a.get("profile_path") else None,
+                    "order": a.get("order", 0)
+                }
+                for a in raw_cast[:12]
+            ]
+            result = {
+                "movieId": movie_id,
+                "tmdbId": t_id,
+                "directors": directors,
+                "cast": cast,
+                "backdrop": f"https://image.tmdb.org/t/p/w1280{data['backdrop_path']}" if data.get("backdrop_path") else None,
+                "overview": data.get("overview")
+            }
+            _credits_cache[movie_id] = result
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e), "directors": [], "cast": []}), 500
+
+    return jsonify({"error": "Credits unavailable", "directors": [], "cast": []}), 502
+
+
+@app.route("/api/person/<int:person_id>", methods=["GET"])
+def api_person_details(person_id: int):
+    """
+    Returns authentic person details, verified biography, birthday, birthplace,
+    profile photo, and top filmography from TMDB.
+    """
+    if person_id in _person_cache:
+        return jsonify(_person_cache[person_id])
+
+    try:
+        import requests
+        r = requests.get(
+            f"https://api.tmdb.org/3/person/{person_id}?append_to_response=movie_credits&api_key={TMDB_API_KEY}",
+            timeout=4.0
+        )
+        if r.status_code == 200:
+            data = r.json()
+            all_credits = data.get("movie_credits", {}).get("cast", []) + data.get("movie_credits", {}).get("crew", [])
+            seen_ids = set()
+            unique_credits = []
+            for c in all_credits:
+                cid = c.get("id")
+                if not cid or cid in seen_ids:
+                    continue
+                seen_ids.add(cid)
+                unique_credits.append(c)
+            unique_credits.sort(key=lambda x: x.get("vote_count", 0), reverse=True)
+            known_for = [
+                {
+                    "id": m.get("id"),
+                    "title": m.get("title") or m.get("original_title"),
+                    "year": m.get("release_date", "").split("-")[0] if m.get("release_date") else "",
+                    "character": m.get("character") or (m.get("job") if m.get("job") else ""),
+                    "poster": f"https://image.tmdb.org/t/p/w185{m['poster_path']}" if m.get("poster_path") else None,
+                    "vote_average": round(m.get("vote_average", 0), 1) if m.get("vote_average") else None
+                }
+                for m in unique_credits[:8]
+            ]
+            result = {
+                "id": data.get("id"),
+                "name": data.get("name"),
+                "biography": data.get("biography", ""),
+                "birthday": data.get("birthday"),
+                "place_of_birth": data.get("place_of_birth"),
+                "known_for_department": data.get("known_for_department", "Acting"),
+                "profile_path": f"https://image.tmdb.org/t/p/w300{data['profile_path']}" if data.get("profile_path") else None,
+                "known_for": known_for
+            }
+            _person_cache[person_id] = result
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"error": "Person details unavailable"}), 502
+
+
 # =========================================================================
 # Dynamic Cinematic SVG Poster Generator
 # =========================================================================
@@ -421,7 +566,7 @@ def movie_poster(movie_id: int):
         if t_id:
             try:
                 import requests
-                r = requests.get(f"https://api.themoviedb.org/3/movie/{t_id}?api_key={TMDB_API_KEY}", timeout=2.5)
+                r = requests.get(f"https://api.tmdb.org/3/movie/{t_id}?api_key={TMDB_API_KEY}", timeout=2.5)
                 if r.status_code == 200:
                     p = r.json().get("poster_path")
                     if p:
