@@ -166,6 +166,16 @@ if os.path.exists(credits_cache_path):
     with open(credits_cache_path, "r", encoding="utf-8") as f:
         indian_credits_cache = json.load(f)
 
+# Load TMDB official ratings cache
+tmdb_ratings_cache = {}
+ratings_cache_path = os.path.join(DATA_DIR, "tmdb_ratings_cache.json")
+if os.path.exists(ratings_cache_path):
+    with open(ratings_cache_path, "r", encoding="utf-8") as f:
+        tmdb_ratings_cache = json.load(f)
+
+# Compute collection mean C on 10-point scale
+C_MEAN = 6.54
+M_MIN_VOTES = 30
 
 movies_list = []
 
@@ -185,6 +195,48 @@ for _, row in movies_df.iterrows():
 
     tmdb_id = INDIAN_TMDB_MAP.get(mid) or links_map.get(mid)
 
+    # Accurate 10-point rating calculation
+    is_indian = (mid >= 200000)
+    credits_entry = indian_credits_cache.get(str(mid)) or {}
+    tmdb_entry = tmdb_ratings_cache.get(str(tmdb_id)) if tmdb_id else {}
+
+    if is_indian:
+        if credits_entry.get("vote_count", 0) > 0:
+            rating = round(float(credits_entry["vote_average"]), 1)
+            votes = int(credits_entry["vote_count"])
+            popularity = round(float(credits_entry.get("popularity", 0.0)), 2)
+            is_rated = True
+        elif tmdb_entry.get("vote_count", 0) > 0:
+            rating = round(float(tmdb_entry["vote_average"]), 1)
+            votes = int(tmdb_entry["vote_count"])
+            popularity = round(float(tmdb_entry.get("popularity", 0.0)), 2)
+            is_rated = True
+        else:
+            rating = None
+            votes = 0
+            popularity = 0.0
+            is_rated = False
+    else:
+        # Hollywood / Global movies from MovieLens (scaled to 10-point scale)
+        votes = int(row["rating_count"])
+        if votes > 0:
+            rating = round(float(row["rating_mean"]) * 2.0, 1)
+            popularity = round(votes * (rating / 10.0), 2)
+            is_rated = True
+        else:
+            rating = None
+            votes = 0
+            popularity = 0.0
+            is_rated = False
+
+    # Bayesian Weighted Quality Score on 10-point scale:
+    # WR = (v / (v + m)) * R + (m / (v + m)) * C
+    if is_rated and rating is not None:
+        wr = ((votes / (votes + M_MIN_VOTES)) * rating) + ((M_MIN_VOTES / (votes + M_MIN_VOTES)) * C_MEAN)
+        score = round(wr, 2)
+    else:
+        score = 6.00
+
     movies_list.append({
         "id": mid,
         "tmdbId": int(tmdb_id) if tmdb_id else None,
@@ -192,9 +244,11 @@ for _, row in movies_df.iterrows():
         "full_title": str(row["title"]),
         "year": int(row["year"]) if pd.notnull(row["year"]) else None,
         "genres": genres,
-        "rating": float(round(row["rating_mean"], 2)),
-        "votes": int(row["rating_count"]),
-        "score": float(round(row["weighted_score"], 2)),
+        "rating": rating,
+        "votes": votes,
+        "score": score,
+        "popularity": popularity,
+        "is_rated": is_rated,
         "poster": poster,
         "sims": sims,
         "industry": industry

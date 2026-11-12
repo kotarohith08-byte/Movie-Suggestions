@@ -2616,3 +2616,157 @@ button, input, select, textarea {
     height: 170px;
   }
 }
+
+
+/* =========================================================================
+   Accurate 10-Point Rating System, Sorting & TMDB Indicators (Requirement 1-6)
+   ========================================================================= */
+.star-rating-container.ten-stars {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 14px 0;
+}
+.star-rating-container.ten-stars .star-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 1.55rem;
+  line-height: 1;
+  padding: 4px 6px;
+}
+.star-rating-container.ten-stars .star-num {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-top: 3px;
+}
+.star-rating-container.ten-stars .star-btn.active .star-num,
+.star-rating-container.ten-stars .star-btn:hover .star-num {
+  color: #fbbf24;
+}
+.btn-clear-rating {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-clear-rating:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fff;
+  border-color: #ef4444;
+}
+.rating-comparison-box {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  text-align: center;
+}
+.rating-comparison-box.hidden {
+  display: none;
+}
+.delta-higher {
+  color: #34d399;
+  font-weight: 700;
+}
+.delta-lower {
+  color: #f87171;
+  font-weight: 700;
+}
+.delta-equal {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+/* TMDB Official Rating Showcase in Detail Modal */
+.tmdb-rating-showcase-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 16px 0 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+.tmdb-rating-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tmdb-rating-score {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.rating-big-num {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: -0.5px;
+}
+.rating-ten {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+.tmdb-badge-label {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tmdb-logo-pill {
+  background: #01b4e4;
+  color: #0d253f;
+  font-weight: 900;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.pill-tmdb-tag {
+  background: #0d253f;
+  color: #01b4e4;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.tmdb-rating-right {
+  text-align: right;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tmdb-rating-right strong {
+  color: #f1f5f9;
+}
+.movie-rating-badge.unrated-badge {
+  color: #94a3b8;
+  font-weight: 500;
+}
+.unrated-text {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.rating-scale {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}

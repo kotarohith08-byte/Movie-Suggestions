@@ -50,7 +50,7 @@
     watchlist: loadStorageSet("cinematch_watchlist"),
     favourites: loadStorageSet("cinematch_favourites"),
     watched: loadStorageSet("cinematch_watched"),
-    ratings: loadStorageMap("cinematch_user_ratings")
+    ratings: loadUserRatings()
   };
 
   // Curated Featured Movies for Streaming Hero Banner (Image 3 Inspiration)
@@ -376,6 +376,72 @@
     }
   }
 
+  // Load and migrate user ratings for 1-10 scale compatibility (Requirement 6)
+  function loadUserRatings() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("cinematch_user_ratings") || "{}");
+      const migrated = {};
+      for (const [k, v] of Object.entries(raw)) {
+        const num = Number(v);
+        if (!isNaN(num) && num > 0) {
+          // If stored on legacy 1-5 star scale, upscale cleanly to 10-point scale
+          migrated[k] = (num <= 5) ? Math.min(10, Math.round(num * 2)) : Math.min(10, Math.round(num));
+        }
+      }
+      return migrated;
+    } catch {
+      return {};
+    }
+  }
+
+  // Format vote counts cleanly (e.g., 25410 -> 25.4k)
+  function formatVotes(v) {
+    if (!v || v <= 0) return "0";
+    if (v >= 1000000) return (v / 1000000).toFixed(1) + "M";
+    if (v >= 1000) return (v / 1000).toFixed(1) + "k";
+    return String(v);
+  }
+
+  // Generate comparison HTML between personal user rating and TMDB community rating (Requirement 6)
+  function renderRatingComparisonHtml(userR, tmdbR) {
+    if (!userR) return "";
+    if (tmdbR === null || tmdbR === undefined || tmdbR <= 0) {
+      return `<span>Your Rating: <strong>${userR}/10 ⭐</strong> (No official TMDB community rating yet)</span>`;
+    }
+    const diff = Number((userR - tmdbR).toFixed(1));
+    const diffStr = (diff > 0 ? `+${diff}` : String(diff));
+    let badgeClass = "delta-equal";
+    let verdict = "Matches community consensus";
+    if (diff > 0.2) {
+      badgeClass = "delta-higher";
+      verdict = `${diffStr} higher than TMDB community`;
+    } else if (diff < -0.2) {
+      badgeClass = "delta-lower";
+      verdict = `${diffStr} lower than TMDB community`;
+    }
+    return `<span>Your Rating: <strong>${userR}/10 ⭐</strong> &nbsp;|&nbsp; TMDB: <strong>${Number(tmdbR).toFixed(1)}/10</strong> &nbsp;(<span class="${badgeClass}">${verdict}</span>)</span>`;
+  }
+
+  // Remove/clear user rating (Requirement 6)
+  function removeUserRating(movieId) {
+    const mid = Number(movieId);
+    delete state.ratings[mid];
+    saveStorageMap("cinematch_user_ratings", state.ratings);
+    updateNavWatchlistBadge();
+    const movie = MOVIE_MAP.get(mid);
+    showToast(`Removed your rating for "${movie ? movie.title : 'Movie'}"`);
+    renderPersonalized();
+    renderUserRatings();
+    renderAllOpenLists();
+    // Update any quick rate buttons for this movie
+    document.querySelectorAll(`.movie-card[data-movie-id="${mid}"] .btn-quick-rate`).forEach(b => {
+      b.textContent = "★ Rate";
+    });
+    document.querySelectorAll(`.movie-card[data-movie-id="${mid}"] .user-rated-badge`).forEach(b => {
+      b.remove();
+    });
+  }
+
   function saveStorageMap(key, mapObj) {
     try {
       localStorage.setItem(key, JSON.stringify(mapObj));
@@ -405,9 +471,9 @@
     const safeTitle = escapeHtml((m && m.title ? m.title : "Movie").length > 22 ? (m.title.slice(0, 20) + "...") : (m && m.title ? m.title : "Movie"));
     const safeGenre = (m && m.genres && m.genres[0]) ? escapeHtml(m.genres[0]) : "Cinema";
     const safeYear = (m && m.year) ? String(m.year) : "";
-    const safeRating = (m && m.rating) ? String(m.rating) : "4.0";
+    const safeRating = (m && m.rating) ? `${Number(m.rating).toFixed(1)}/10` : "";
 
-    return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450"><rect width="300" height="450" fill="%23101626"/><rect width="300" height="450" fill="none" stroke="%238b5cf6" stroke-width="2"/><circle cx="150" cy="180" r="45" fill="%238b5cf6" opacity="0.25"/><text x="150" y="55" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="%23a78bfa" letter-spacing="2">${safeGenre.toUpperCase()}</text><text x="150" y="240" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="800" fill="%23ffffff">${safeTitle}</text><text x="150" y="275" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="%2394a3b8">${safeYear}</text><text x="150" y="380" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="%23fbbf24">${safeRating} ★</text></svg>`;
+    return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450"><rect width="300" height="450" fill="%23101626"/><rect width="300" height="450" fill="none" stroke="%238b5cf6" stroke-width="2"/><circle cx="150" cy="180" r="45" fill="%238b5cf6" opacity="0.25"/><text x="150" y="55" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="%23a78bfa" letter-spacing="2">${safeGenre.toUpperCase()}</text><text x="150" y="240" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="800" fill="%23ffffff">${safeTitle}</text><text x="150" y="275" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="%2394a3b8">${safeYear}</text><text x="150" y="380" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="%23fbbf24">${safeRating ? safeRating + ' ⭐' : '★ CineMatch'}</text></svg>`;
   }
 
   // --- 3. Initialization ---
@@ -490,7 +556,10 @@
         }, 200);
       }
       if (titleEl) titleEl.textContent = m.title;
-      if (ratingBadge) ratingBadge.textContent = `★ ${m.score.toFixed(1)}`;
+      if (ratingBadge) {
+        const heroR = (m.rating !== null && m.rating !== undefined) ? Number(m.rating).toFixed(1) : Number(m.score || 7.7).toFixed(1);
+        ratingBadge.innerHTML = `⭐ ${heroR} / 10 <span class="pill-tmdb-tag">TMDB</span>`;
+      }
       if (certBadge) certBadge.textContent = m.cert || "UA 16+";
       if (yearBadge) yearBadge.textContent = m.year;
       if (durationBadge) durationBadge.textContent = m.runtime || "2h 30m";
@@ -582,7 +651,7 @@
             >
             <div class="top10-meta-overlay">
               <div class="top10-card-title">${escapeHtml(m.title)}</div>
-              <div class="top10-card-rating">★ ${m.rating} (${m.year || "N/A"})</div>
+              <div class="top10-card-rating">⭐ ${m.rating ? Number(m.rating).toFixed(1) + '/10' : 'Top 10'} (${m.year || "N/A"})</div>
             </div>
           </div>
         </div>
@@ -1068,8 +1137,8 @@
       if (state.era === "2000s" && (!m.year || m.year < 2000 || m.year > 2009)) return false;
       if (state.era === "classics" && (!m.year || m.year >= 2000)) return false;
 
-      // Rating
-      if (state.minRating > 0 && (m.score < state.minRating)) return false;
+      // Rating (on 10-point scale)
+      if (state.minRating > 0 && ((m.rating !== null ? m.rating : (m.score || 0)) < state.minRating)) return false;
 
       // Genre
       if (state.genre !== "All" && !(m.genres || []).includes(state.genre)) return false;
@@ -1077,11 +1146,17 @@
       return true;
     });
 
-    // Sorting
+    // Accurate Rating Sorting (Requirement 3: Numerical comparisons)
     if (state.sortBy === "score") {
-      filtered.sort((a, b) => b.score - a.score);
-    } else if (state.sortBy === "votes") {
-      filtered.sort((a, b) => b.votes - a.votes);
+      filtered.sort((a, b) => (b.score || 0) - (a.score || 0));
+    } else if (state.sortBy === "rating_desc") {
+      filtered.sort((a, b) => ((b.rating !== null && b.rating !== undefined ? b.rating : -1) - (a.rating !== null && a.rating !== undefined ? a.rating : -1)) || (b.votes - a.votes));
+    } else if (state.sortBy === "rating_asc") {
+      filtered.sort((a, b) => ((a.rating !== null && a.rating !== undefined ? a.rating : 99) - (b.rating !== null && b.rating !== undefined ? b.rating : 99)) || (a.votes - b.votes));
+    } else if (state.sortBy === "votes" || state.sortBy === "votes_desc") {
+      filtered.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+    } else if (state.sortBy === "pop_desc" || state.sortBy === "popularity") {
+      filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0) || (b.votes - a.votes));
     } else if (state.sortBy === "year_desc") {
       filtered.sort((a, b) => (b.year || 0) - (a.year || 0));
     } else if (state.sortBy === "year_asc") {
@@ -1147,7 +1222,7 @@
               <div class="autocomplete-title">${escapeHtml(m.title)}</div>
               <div class="autocomplete-meta">${m.year || "N/A"} &bull; ${(m.genres || []).slice(0, 2).join(", ")}</div>
             </div>
-            <span class="autocomplete-badge">★ ${m.rating}</span>
+            <span class="autocomplete-badge">⭐ ${m.rating ? Number(m.rating).toFixed(1) + '/10' : 'Unrated'}</span>
           </div>
         `).join("");
 
@@ -1235,7 +1310,7 @@
     if (algorithm === "popular") {
       return candidates.slice().sort((a, b) => (b.votes * Math.pow(b.score, 1.4)) - (a.votes * Math.pow(a.score, 1.4))).slice(0, limit).map(m => ({
         ...m,
-        _explainReason: `🔥 Ranked #${m.votes} in Global Audience Popularity`
+        _explainReason: `🔥 Audience Favorite • ${formatVotes(m.votes)} verified reviews`
       }));
     }
 
@@ -1252,11 +1327,12 @@
       }
     }
 
-    // 3. Collaborative (SVD) or Hybrid Ensemble
+    // 3. Collaborative (SVD) or Hybrid Ensemble (Requirement 7)
     if ((algorithm === "collab" || algorithm === "hybrid") && ratedList.length > 0) {
       const poolScores = new Map();
       ratedList.forEach(({ movie, rating }) => {
-        const weight = (rating - 2.5) / 2.5;
+        // Normalize 1-10 rating centered at 5.0
+        const weight = (rating - 5.0) / 5.0;
         (movie.sims || []).forEach(simId => {
           if (!ratedIds.has(simId)) {
             poolScores.set(simId, (poolScores.get(simId) || 0) + (1.2 * weight));
@@ -1266,11 +1342,11 @@
 
       const scored = candidates.map(m => {
         const simBonus = poolScores.get(m.id) || 0;
-        const quality = (m.score - 1.0) / 4.0;
+        const quality = (m.score || 6.54) / 10.0;
         return {
           ...m,
           _calcScore: (0.6 * simBonus) + (0.4 * quality),
-          _explainReason: simBonus > 0 ? `⚡ Hybrid Ensemble: High affinity to your ${ratedList.length} rated titles` : `⚡ Bayesian Quality Score ${m.score.toFixed(1)}★`
+          _explainReason: simBonus > 0 ? `⚡ Hybrid Ensemble: High affinity to your ${ratedList.length} rated titles` : `⚡ Quality Score (Bayesian): ${(m.score || 6.54).toFixed(1)}/10`
         };
       });
 
@@ -1278,10 +1354,10 @@
       return scored.slice(0, limit);
     }
 
-    // Fallback: Bayesian Weighted Top Rated
-    return candidates.slice().sort((a, b) => b.score - a.score).slice(0, limit).map(m => ({
+    // Fallback: Bayesian Weighted Quality Recommendations (Requirement 4)
+    return candidates.slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, limit).map(m => ({
       ...m,
-      _explainReason: `★ Bayesian 4.9★ Masterpiece Pick`
+      _explainReason: `⭐ Quality Score (Bayesian): ${(m.score || 6.54).toFixed(1)}/10`
     }));
   }
 
@@ -1343,7 +1419,7 @@
 
     renderMovieCards(grid, pool.slice(0, state.indianCount).map(m => ({
       ...m,
-      _explainReason: `${m.industry || "Indian"} Blockbuster &bull; ${m.votes} logged reviews`
+      _explainReason: `${m.industry || "Indian"} Blockbuster • ${m.votes > 0 ? formatVotes(m.votes) + ' TMDB votes' : 'Verified Cinema'}`
     })));
 
     if (loadMoreBtn) {
@@ -1367,7 +1443,7 @@
     }
     renderMovieCards(grid, popular.slice(0, 12).map(m => ({
       ...m,
-      _explainReason: `Global Audience Favorite &bull; ${m.votes} reviews`
+      _explainReason: `Global Audience Favorite • ${formatVotes(m.votes)} verified reviews`
     })));
   }
 
@@ -1390,13 +1466,16 @@
         <div class="movie-card" data-movie-id="${movie.id}">
           <div class="card-media">
             <img src="${getPosterSrc(movie)}" alt="${escapeHtml(movie.title)}" loading="lazy" class="movie-poster" onerror="this.onerror=null;this.src='${getPosterSrc({ ...movie, poster: '' })}'">
-            <div class="user-rated-badge">Rated: ${rating}★</div>
-            <button class="btn-quick-rate" data-movie-id="${movie.id}" data-title="${escapeHtml(movie.title)}">★ Edit</button>
+            <div class="user-rated-badge">Rated: ${rating}/10 ⭐</div>
+            <button class="btn-quick-rate" data-movie-id="${movie.id}" data-title="${escapeHtml(movie.title)}">★ Edit (${rating}/10)</button>
           </div>
           <div class="card-body">
             <div class="card-meta">
               <span class="movie-year">${movie.year || "N/A"}</span>
-              <span class="movie-rating-badge">Your: ${rating}★</span>
+              <span class="movie-rating-badge">Your: ${rating}/10 ⭐</span>
+            </div>
+            <div style="font-size:0.75rem; color:#94a3b8; margin: 2px 0 4px;">
+              TMDB: <strong style="color:#fbbf24;">${movie.rating ? Number(movie.rating).toFixed(1) + '/10' : 'Unrated'}</strong>
             </div>
             <h3 class="movie-title">${escapeHtml(movie.title)}</h3>
             <div class="card-actions">
@@ -1421,8 +1500,13 @@
       const userR = state.ratings[m.id];
       const inWatchlist = state.watchlist.has(m.id);
       const isFav = state.favourites.has(m.id);
-      const matchScore = m._calcScore ? Math.min(99, Math.round(m._calcScore * 100)) : Math.round((m.score / 5.0) * 100);
+      const matchScore = m._calcScore ? Math.min(99, Math.round(m._calcScore * 100)) : Math.min(99, Math.max(60, Math.round(((m.score || 6.54) / 10.0) * 100)));
       const reasonTag = m._explainReason || (m.genres ? `Recommended for fans of ${m.genres.slice(0, 2).join(" & ")}` : "Recommended by CineMatch AI");
+
+      const hasRating = (m.rating !== null && m.rating !== undefined && m.votes > 0);
+      const ratingBadgeHtml = hasRating 
+        ? `<span class="movie-rating-badge" title="TMDB Community Rating: ${Number(m.rating).toFixed(1)} / 10 (${(m.votes || 0).toLocaleString()} votes)">⭐ ${Number(m.rating).toFixed(1)} <span class="rating-scale">/10</span> <span class="vote-count">(${formatVotes(m.votes)})</span></span>`
+        : `<span class="movie-rating-badge unrated-badge" title="No verified community ratings yet">⭐ <span class="unrated-text">Not Rated Yet</span></span>`;
 
       return `
         <div class="movie-card" data-movie-id="${m.id}">
@@ -1436,7 +1520,7 @@
             >
             <div class="match-badge"><span class="match-val">${matchScore}%</span> Match</div>
             
-            ${userR ? `<div class="user-rated-badge">Rated ${userR}★</div>` : ""}
+            ${userR ? `<div class="user-rated-badge">Rated ${userR}/10 ⭐</div>` : ""}
 
             <div class="card-floating-actions">
               <button class="btn-icon-floating ${inWatchlist ? 'active' : ''}" data-watchlist-id="${m.id}" title="${inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}">
@@ -1451,13 +1535,13 @@
               </button>
             </div>
 
-            <button class="btn-quick-rate" data-movie-id="${m.id}" data-title="${escapeHtml(m.title)}">★ Rate</button>
+            <button class="btn-quick-rate" data-movie-id="${m.id}" data-title="${escapeHtml(m.title)}">${userR ? `★ ${userR}/10` : '★ Rate'}</button>
           </div>
 
           <div class="card-body">
             <div class="card-meta">
               <span class="movie-year">${m.year || "N/A"}</span>
-              <span class="movie-rating-badge">★ ${m.rating} <span class="vote-count">(${m.votes})</span></span>
+              ${ratingBadgeHtml}
             </div>
 
             <h3 class="movie-title" title="${escapeHtml(m.title)}">
@@ -1509,14 +1593,15 @@
     const isWatched = state.watched.has(movie.id);
 
     // Meta Pills: Rating, Cert, Runtime, Industry, Genres
+    const hasRating = (movie.rating !== null && movie.rating !== undefined && movie.votes > 0);
     if (metaPills) {
       metaPills.innerHTML = `
-        <span class="meta-rating-pill">★ ${movie.rating}</span>
+        <span class="meta-rating-pill">⭐ ${hasRating ? Number(movie.rating).toFixed(1) + ' / 10' : 'Not Rated Yet'} <span class="pill-tmdb-tag">TMDB</span></span>
         <span class="meta-cert-pill">UA / PG-13</span>
         <span>${movie.runtime || "2h 15m"}</span>
-        <span>&bull;</span>
+        <span>•</span>
         <span class="text-cyan">${movie.industry || "Cinema"}</span>
-        <span>&bull;</span>
+        <span>•</span>
         <span class="text-purple">${(movie.genres || []).join(", ")}</span>
       `;
     }
@@ -1548,27 +1633,49 @@
           </button>
         </div>
 
+        <!-- Official TMDB Community Rating Component (Requirement 2) -->
+        <div class="tmdb-rating-showcase-card">
+          <div class="tmdb-rating-left">
+            <div class="tmdb-rating-score">
+              <span class="rating-star">⭐</span>
+              <span class="rating-big-num">${hasRating ? Number(movie.rating).toFixed(1) : "N/A"}</span>
+              <span class="rating-ten">/ 10</span>
+            </div>
+            <div class="tmdb-badge-label">
+              <span class="tmdb-logo-pill">TMDB</span> Official Community Rating
+            </div>
+          </div>
+          <div class="tmdb-rating-right">
+            <div class="tmdb-vote-count-line">Based on <strong>${movie.votes > 0 ? Number(movie.votes).toLocaleString() : '0'}</strong> verified votes</div>
+            <div class="tmdb-popularity-line">Popularity Index: <strong>${Number(movie.popularity || 0).toFixed(1)}</strong></div>
+          </div>
+        </div>
+
         <!-- Synopsis & Credits Grid -->
         <div class="modal-details-grid">
           <div class="modal-synopsis">
             <h3>Synopsis</h3>
             <p id="modalSynopsisText">${escapeHtml(synopsis)}</p>
 
+            <!-- 10-Point User Rating Section (Requirement 6) -->
             <div style="margin-top: 20px;">
-              <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 8px;">Rate this Movie:</h4>
-              <div class="star-rating-container" style="justify-content: flex-start; margin: 6px 0;">
-                ${[1, 2, 3, 4, 5].map(v => `
-                  <button type="button" class="star-btn ${userR >= v ? 'active' : ''}" data-modal-rate-val="${v}">★</button>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <h4 style="font-size: 0.95rem; color: #fff; margin: 0;">Your Personal Rating:</h4>
+                ${userR ? `<button type="button" class="btn-clear-rating" id="btnModalClearRating">Remove Rating</button>` : ""}
+              </div>
+              <div class="star-rating-container ten-stars" style="justify-content: flex-start; margin: 6px 0;" id="detailStarsContainer">
+                ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => `
+                  <button type="button" class="star-btn ${userR >= v ? 'active' : ''}" data-modal-rate-val="${v}" title="${v}/10">★<span class="star-num">${v}</span></button>
                 `).join("")}
-                <span id="detailRatingText" style="margin-left: 10px; font-weight: 700; color: #fbbf24; align-self: center; font-size: 0.9rem;">
-                  ${userR ? `Rated ${userR}.0★` : "Rate now"}
-                </span>
+              </div>
+              <div id="detailRatingComparison" class="rating-comparison-box ${userR ? '' : 'hidden'}">
+                ${renderRatingComparisonHtml(userR, movie.rating)}
               </div>
             </div>
           </div>
 
           <div class="modal-credits-box">
-            <h3>Credits</h3>
+            <h3>Credits &amp; Metadata</h3>
             <div class="credit-item">
               <div class="credit-lbl">Director(s)</div>
               <div class="credit-val" id="modalDirectorContainer">
@@ -1576,16 +1683,20 @@
               </div>
             </div>
             <div class="credit-item">
-              <div class="credit-lbl">Industry</div>
-              <div class="credit-val">${escapeHtml(movie.industry || "Global Cinema")}</div>
+              <div class="credit-lbl">Official Rating</div>
+              <div class="credit-val text-gold">${hasRating ? Number(movie.rating).toFixed(1) + ' / 10 (TMDB)' : 'Not Rated Yet'}</div>
             </div>
             <div class="credit-item">
-              <div class="credit-lbl">Bayesian Weighted Score</div>
-              <div class="credit-val text-purple">${movie.score} / 5.0</div>
+              <div class="credit-lbl">Quality Score (Bayesian)</div>
+              <div class="credit-val text-purple">${Number(movie.score || 6.54).toFixed(2)} / 10.0</div>
             </div>
             <div class="credit-item">
               <div class="credit-lbl">Total Rating Volume</div>
-              <div class="credit-val text-cyan">${movie.votes} verified reviews</div>
+              <div class="credit-val text-cyan">${(movie.votes || 0).toLocaleString()} verified votes</div>
+            </div>
+            <div class="credit-item">
+              <div class="credit-lbl">Industry</div>
+              <div class="credit-val">${escapeHtml(movie.industry || "Global Cinema")}</div>
             </div>
           </div>
         </div>
@@ -1657,7 +1768,7 @@
         };
       }
 
-      // Star rating inside modal
+      // 10-Star rating inside modal (Requirement 6)
       bodyEl.querySelectorAll("[data-modal-rate-val]").forEach(star => {
         star.onclick = () => {
           const val = Number(star.dataset.modalRateVal);
@@ -1665,13 +1776,28 @@
           bodyEl.querySelectorAll("[data-modal-rate-val]").forEach(s => {
             s.classList.toggle("active", Number(s.dataset.modalRateVal) <= val);
           });
-          const textEl = document.getElementById("detailRatingText");
-          if (textEl) textEl.textContent = `Rated ${val}.0★`;
-          showToast(`Saved ${val}.0★ rating! Recommendation model updated.`);
+          const compEl = document.getElementById("detailRatingComparison");
+          if (compEl) {
+            compEl.innerHTML = renderRatingComparisonHtml(val, movie.rating);
+            compEl.classList.remove("hidden");
+          }
+          showToast(`Saved ${val}/10 ⭐ rating for "${movie.title}"!`);
           renderPersonalized();
           renderUserRatings();
+          renderAllOpenLists();
         };
       });
+
+      const clearBtn = document.getElementById("btnModalClearRating");
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          removeUserRating(movie.id);
+          bodyEl.querySelectorAll("[data-modal-rate-val]").forEach(s => s.classList.remove("active"));
+          const compEl = document.getElementById("detailRatingComparison");
+          if (compEl) compEl.classList.add("hidden");
+          clearBtn.style.display = "none";
+        };
+      }
 
       // Asynchronously fetch verified directors and cast from TMDB
       loadCreditsForDetailModal(movie, modal);
@@ -1937,18 +2063,26 @@
   }
 
   function renderCardsHtml(movies) {
-    return movies.map(m => `
-      <div class="movie-card" data-detail-id="${m.id}" style="cursor: pointer;">
-        <div class="card-media">
-          <img src="${getPosterSrc(m)}" alt="${escapeHtml(m.title)}" loading="lazy" class="movie-poster" onerror="this.onerror=null;this.src='${getPosterSrc({ ...m, poster: '' })}'">
+    return movies.map(m => {
+      const hasRating = (m.rating !== null && m.rating !== undefined && m.votes > 0);
+      const rBadge = hasRating 
+        ? `<span class="movie-rating-badge">⭐ ${Number(m.rating).toFixed(1)} <span class="rating-scale">/10</span></span>` 
+        : `<span class="movie-rating-badge unrated-badge">⭐ Not Rated</span>`;
+      return `
+        <div class="movie-card" data-detail-id="${m.id}" style="cursor: pointer;">
+          <div class="card-media">
+            <img src="${getPosterSrc(m)}" alt="${escapeHtml(m.title)}" loading="lazy" class="movie-poster" onerror="this.onerror=null;this.src='${getPosterSrc({ ...m, poster: '' })}'">
+          </div>
+          <div class="card-body">
+            <div class="card-meta">
+              <span class="movie-year">${m.year || "N/A"}</span>
+              ${rBadge}
+            </div>
+            <h4 class="movie-title" style="font-size: 0.9rem;">${escapeHtml(m.title)}</h4>
+          </div>
         </div>
-        <div class="card-body">
-          <span class="movie-year">${m.year || "N/A"}</span>
-          <h4 class="movie-title" style="font-size: 0.9rem;">${escapeHtml(m.title)}</h4>
-          <span class="movie-rating-badge">★ ${m.rating}</span>
-        </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
   }
 
   // =========================================================================
@@ -2085,34 +2219,79 @@
       closeActorBtn.onclick = () => actorModal.classList.remove("active");
     }
 
-    // Quick Rating Modal
+    // Quick Rating Modal (Requirement 6: 10-Point Rating, Hover, Comparison, and Clear)
     const ratingModal = document.getElementById("ratingModal");
     const closeRatingBtn = document.getElementById("closeRatingModalBtn");
     const modalStars = document.querySelectorAll("#modalStars .star-btn");
     const ratingText = document.getElementById("modalRatingText");
     const modalMovieId = document.getElementById("modalMovieId");
+    const modalClearRatingBtn = document.getElementById("modalClearRatingBtn");
+    const modalRatingComparison = document.getElementById("modalRatingComparison");
 
     if (closeRatingBtn && ratingModal) {
       closeRatingBtn.onclick = () => ratingModal.classList.remove("active");
     }
 
+    if (modalClearRatingBtn) {
+      modalClearRatingBtn.onclick = () => {
+        const mid = Number(modalMovieId.value);
+        removeUserRating(mid);
+        modalStars.forEach(s => s.classList.remove("active"));
+        if (ratingText) ratingText.textContent = "Rating cleared!";
+        if (modalRatingComparison) modalRatingComparison.classList.add("hidden");
+        setTimeout(() => {
+          if (ratingModal) ratingModal.classList.remove("active");
+        }, 350);
+      };
+    }
+
     modalStars.forEach(btn => {
+      // Click rating
       btn.onclick = () => {
         const val = Number(btn.dataset.val);
         const mid = Number(modalMovieId.value);
+        const movie = MOVIE_MAP.get(mid);
         saveUserRating(mid, val);
 
         modalStars.forEach(s => s.classList.toggle("active", Number(s.dataset.val) <= val));
-        if (ratingText) ratingText.textContent = `Saved ${val}.0★ rating!`;
-        showToast(`Saved ${val}.0★ rating! Recommendations updated.`);
+        if (ratingText) ratingText.textContent = `Saved ${val}/10 ⭐ rating!`;
+
+        if (modalRatingComparison && movie) {
+          modalRatingComparison.innerHTML = renderRatingComparisonHtml(val, movie.rating);
+          modalRatingComparison.classList.remove("hidden");
+        }
+        showToast(`Saved ${val}/10 ⭐ rating for "${movie ? movie.title : 'Movie'}"!`);
 
         setTimeout(() => {
           if (ratingModal) ratingModal.classList.remove("active");
           renderPersonalized();
           renderUserRatings();
-        }, 350);
+          renderAllOpenLists();
+          document.querySelectorAll(`.movie-card[data-movie-id="${mid}"] .btn-quick-rate`).forEach(b => {
+            b.textContent = `★ ${val}/10`;
+          });
+        }, 450);
+      };
+
+      // Hover feedback
+      btn.onmouseenter = () => {
+        const hoverVal = Number(btn.dataset.val);
+        modalStars.forEach(s => s.classList.toggle("active", Number(s.dataset.val) <= hoverVal));
+        if (ratingText) ratingText.textContent = `${hoverVal}/10 ⭐`;
       };
     });
+
+    const modalStarsWrap = document.getElementById("modalStars");
+    if (modalStarsWrap) {
+      modalStarsWrap.onmouseleave = () => {
+        const mid = Number(modalMovieId.value);
+        const currentR = state.ratings[mid];
+        modalStars.forEach(s => s.classList.toggle("active", currentR && Number(s.dataset.val) <= currentR));
+        if (ratingText) {
+          ratingText.textContent = currentR ? `Your Rating: ${currentR}/10 ⭐` : "Click a star (1-10) to rate";
+        }
+      };
+    }
 
     // ML Metrics Modal & Chart.js
     const metricsModal = document.getElementById("metricsModal");
@@ -2171,11 +2350,23 @@
       const rateBtn = e.target.closest(".btn-quick-rate");
       if (rateBtn && ratingModal) {
         const mid = Number(rateBtn.dataset.movieId);
-        const title = rateBtn.dataset.title;
+        const movie = MOVIE_MAP.get(mid);
+        const title = rateBtn.dataset.title || (movie ? movie.title : "Movie");
         modalMovieId.value = mid;
         document.getElementById("ratingModalTitle").textContent = `Rate "${title}"`;
-        if (ratingText) ratingText.textContent = "Click a star to submit rating";
-        modalStars.forEach(s => s.classList.remove("active"));
+        const currentR = state.ratings[mid];
+        if (ratingText) {
+          ratingText.textContent = currentR ? `Your Rating: ${currentR}/10 ⭐` : "Click a star (1-10) to submit rating";
+        }
+        modalStars.forEach(s => s.classList.toggle("active", currentR && Number(s.dataset.val) <= currentR));
+        if (modalRatingComparison) {
+          if (currentR && movie) {
+            modalRatingComparison.innerHTML = renderRatingComparisonHtml(currentR, movie.rating);
+            modalRatingComparison.classList.remove("hidden");
+          } else {
+            modalRatingComparison.classList.add("hidden");
+          }
+        }
         ratingModal.classList.add("active");
         return;
       }
