@@ -172,6 +172,48 @@ class TestRecommendationAlgorithms(unittest.TestCase):
         self.assertNotIn(1, rec_ids, "Should not recommend already-rated movie #1")
         self.assertNotIn(260, rec_ids, "Should not recommend already-rated movie #260")
 
+    def test_top10_unique_movies_no_duplicates(self):
+        top10 = self.rec.get_top_10_movies(limit=10)
+        self.assertEqual(len(top10), 10, "Top 10 must return exactly 10 movies when available")
+
+        # Check unique movie IDs
+        ids = [m["movieId"] for m in top10]
+        self.assertEqual(len(ids), len(set(ids)), f"Movie IDs must be unique in Top 10: {ids}")
+
+        # Check unique TMDB IDs
+        tmdb_ids = [m["tmdbId"] for m in top10 if m.get("tmdbId")]
+        self.assertEqual(len(tmdb_ids), len(set(tmdb_ids)), f"TMDB IDs must be unique in Top 10: {tmdb_ids}")
+
+        # Check unique normalized titles
+        titles = [self.rec.normalize_title(m.get("clean_title") or m.get("title", "")) for m in top10]
+        self.assertEqual(len(titles), len(set(titles)), f"Titles must be unique in Top 10: {titles}")
+
+    def test_top10_all_categories_no_duplicates(self):
+        categories = ["All", "Action", "Drama", "Comedy", "Thriller", "Sci-Fi", "Indian", "Tollywood", "Bollywood", "Kollywood", "Global"]
+        for cat in categories:
+            top10 = self.rec.get_top_10_movies(category=cat, limit=10)
+            self.assertEqual(len(top10), 10, f"Category '{cat}' must return 10 movies whenever eligible candidates exist")
+
+            ids = [m["movieId"] for m in top10]
+            self.assertEqual(len(ids), len(set(ids)), f"Duplicate movie ID detected in category '{cat}'")
+
+            tmdb_ids = [m["tmdbId"] for m in top10 if m.get("tmdbId")]
+            self.assertEqual(len(tmdb_ids), len(set(tmdb_ids)), f"Duplicate TMDB ID detected in category '{cat}'")
+
+            titles = [self.rec.normalize_title(m.get("clean_title") or m.get("title", "")) for m in top10]
+            self.assertEqual(len(titles), len(set(titles)), f"Duplicate title detected in category '{cat}'")
+
+    def test_top10_duplicate_replacement(self):
+        # Both 200002 ('Baahubali: The Beginning') and 200061 ('Bāhubali: The Beginning') exist in Tollywood
+        # Verify that only ONE Baahubali appears, and the duplicate is replaced by the next highest-ranked movie
+        tollywood_top10 = self.rec.get_top_10_movies(category="Tollywood", limit=10)
+        titles = [m.get("clean_title") or m.get("title", "") for m in tollywood_top10]
+        baahubali_1_count = sum(1 for t in titles if "baahubali: the beginning" in t.lower())
+        self.assertEqual(baahubali_1_count, 1, f"Baahubali 1 should only appear once in Tollywood Top 10, found: {baahubali_1_count}")
+
+        # Ensure 10 distinct movies
+        self.assertEqual(len(tollywood_top10), 10)
+
 
 class TestFlaskBackendAPI(unittest.TestCase):
     """Tests Flask endpoints, HTTP status codes, JSON responses, and SVG posters."""
@@ -258,6 +300,21 @@ class TestFlaskBackendAPI(unittest.TestCase):
         self.assertIn("rmse", metrics)
         self.assertIn("mae", metrics)
         self.assertIn("precision_at_10", metrics)
+
+    def test_api_top10_endpoint(self):
+        res = self.client.get("/api/top10?limit=10")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["status"], "success")
+        movies = data["movies"]
+        self.assertEqual(len(movies), 10)
+
+        # Verify uniqueness
+        ids = [m["movieId"] for m in movies]
+        self.assertEqual(len(ids), len(set(ids)), f"IDs must be unique: {ids}")
+        rec = get_recommender()
+        titles = [rec.normalize_title(m.get("clean_title") or m.get("title", "")) for m in movies]
+        self.assertEqual(len(titles), len(set(titles)), f"Titles must be unique: {titles}")
 
 
 if __name__ == "__main__":

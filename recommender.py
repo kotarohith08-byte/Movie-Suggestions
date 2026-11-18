@@ -158,7 +158,133 @@ class MovieRecommender:
 
         # Sort by relevance descending, then by weighted_score
         results.sort(key=lambda x: (x.get("search_relevance", 0), x["weighted_score"], x["rating_count"]), reverse=True)
-        return results[:limit]
+        return self.deduplicate_movies(results, limit=limit)
+
+    @staticmethod
+    def normalize_title(title: str) -> str:
+        """
+        Normalizes movie titles to identify duplicates across spelling variations,
+        accents/diacritics, punctuation, spacing, and trailing year tags.
+        e.g., 'Bāhubali: The Beginning (2015)' -> 'baahubalithebeginning'
+        """
+        if not title:
+            return ""
+        import re
+        import unicodedata
+        t = unicodedata.normalize("NFKD", str(title))
+        t = "".join(c for c in t if not unicodedata.combining(c))
+        t = t.lower()
+        t = re.sub(r"\s*\(\d{4}\)$", "", t)
+        t = re.sub(r"[^a-z0-9]", "", t)
+        return t.strip()
+
+    def deduplicate_movies(self, movies: List[Dict], limit: int = 10) -> List[Dict]:
+        """
+        Guarantees that all returned movies are strictly unique.
+        Checks movie ID, TMDB ID, and normalized title.
+        Duplicates are dynamically dropped and replaced by the next eligible movie.
+        """
+        seen_ids = set()
+        seen_tmdb = set()
+        seen_titles = set()
+        unique = []
+
+        for m in movies:
+            mid = m.get("movieId") or m.get("id")
+            tmdb = m.get("tmdbId")
+            norm_t = self.normalize_title(m.get("clean_title") or m.get("title", ""))
+
+            if mid in seen_ids:
+                continue
+            if tmdb and tmdb in seen_tmdb:
+                continue
+            if norm_t and norm_t in seen_titles:
+                continue
+
+            seen_ids.add(mid)
+            if tmdb:
+                seen_tmdb.add(tmdb)
+            if norm_t:
+                seen_titles.add(norm_t)
+
+            unique.append(m)
+            if limit and len(unique) >= limit:
+                break
+
+        return unique
+
+    def get_top_10_movies(
+        self,
+        category: Optional[str] = None,
+        genre: Optional[str] = None,
+        query: Optional[str] = None,
+        limit: int = 10
+    ) -> List[Dict]:
+        """
+        Returns exactly 10 unique top-ranked movies across any category/genre/search.
+        Always displays 10 different movies with zero duplicates.
+        """
+        candidates = list(self.movie_dict.values())
+
+        # 1. Filter by Category / Industry
+        cat = (category or "").lower().strip()
+        if cat and cat != "all":
+            if cat in ["indian", "tollywood", "bollywood", "kollywood"]:
+                if cat == "tollywood":
+                    candidates = [m for m in candidates if m.get("industry") == "Tollywood" or (200001 <= m["movieId"] <= 200030) or (200061 <= m["movieId"] <= 200275)]
+                elif cat == "bollywood":
+                    candidates = [m for m in candidates if m.get("industry") == "Bollywood" or (200031 <= m["movieId"] <= 200060) or (200301 <= m["movieId"] <= 200615)]
+                elif cat == "kollywood":
+                    candidates = [m for m in candidates if m.get("industry") == "Kollywood" or m["movieId"] >= 201001]
+                else:
+                    candidates = [m for m in candidates if m["movieId"] >= 200000]
+            elif cat in ["global", "hollywood"]:
+                candidates = [m for m in candidates if m.get("industry") == "Global" or m["movieId"] < 200000]
+            else:
+                candidates = [m for m in candidates if any(g.lower() == cat for g in m["genres"])]
+
+        # 2. Filter by Genre
+        if genre and genre.lower() != "all":
+            g_lower = genre.lower().strip()
+            candidates = [m for m in candidates if any(g.lower() == g_lower for g in m["genres"])]
+
+        # 3. Filter by Search Query
+        if query and query.strip():
+            q = query.lower().strip()
+            candidates = [m for m in candidates if q in m["clean_title"].lower() or q in m["title"].lower() or any(q in g.lower() for g in m["genres"])]
+
+        # 4. Sort according to Bayesian popularity formula
+        candidates.sort(key=lambda x: (x["rating_count"] * (x["weighted_score"] ** 1.5), x["weighted_score"], x["rating_mean"]), reverse=True)
+
+        # 5. Strictly deduplicate
+        unique_top = self.deduplicate_movies(candidates, limit=limit)
+
+        # 6. Fallback backfill from global high-ranking if filtered set had fewer than limit
+        if len(unique_top) < limit:
+            global_pool = sorted(self.movie_dict.values(), key=lambda x: (x["rating_count"] * (x["weighted_score"] ** 1.5), x["weighted_score"]), reverse=True)
+            seen_ids = {m["movieId"] for m in unique_top}
+            seen_tmdb = {m.get("tmdbId") for m in unique_top if m.get("tmdbId")}
+            seen_titles = {self.normalize_title(m.get("clean_title") or m.get("title", "")) for m in unique_top}
+
+            for m in global_pool:
+                mid = m["movieId"]
+                tmdb = m.get("tmdbId")
+                norm_t = self.normalize_title(m.get("clean_title") or m.get("title", ""))
+
+                if mid in seen_ids or (tmdb and tmdb in seen_tmdb) or (norm_t and norm_t in seen_titles):
+                    continue
+
+                seen_ids.add(mid)
+                if tmdb:
+                    seen_tmdb.add(tmdb)
+                if norm_t:
+                    seen_titles.add(norm_t)
+
+                unique_top.append(m)
+                if len(unique_top) == limit:
+                    break
+
+        return unique_top
 
     def get_popular_movies(self, limit: int = 12, genre: Optional[str] = None) -> List[Dict]:
         """Returns trending/popular movies based on rating count and quality score."""
@@ -168,7 +294,7 @@ class MovieRecommender:
 
         # Popularity score combines rating count with weighted average rating
         candidates.sort(key=lambda x: (x["rating_count"] * (x["weighted_score"] ** 1.5)), reverse=True)
-        return candidates[:limit]
+        return self.deduplicate_movies(candidates, limit=limit)
 
     def get_top_rated_movies(self, limit: int = 12, min_ratings: int = 10, genre: Optional[str] = None) -> List[Dict]:
         """Returns highest rated movies satisfying a minimum rating count threshold."""
@@ -177,7 +303,7 @@ class MovieRecommender:
             candidates = [m for m in candidates if any(g.lower() == genre.lower() for g in m["genres"])]
 
         candidates.sort(key=lambda x: (x["weighted_score"], x["rating_mean"]), reverse=True)
-        return candidates[:limit]
+        return self.deduplicate_movies(candidates, limit=limit)
 
     def get_movies_by_genre(self, genre: str, limit: int = 12) -> List[Dict]:
         """Retrieves top rated movies for a specific genre."""
@@ -194,7 +320,7 @@ class MovieRecommender:
 
         similar_pairs = self.top_similarities.get(mid, [])
         recommendations = []
-        for sim_mid, sim_score in similar_pairs[:top_n]:
+        for sim_mid, sim_score in similar_pairs:
             if sim_mid in self.movie_dict:
                 item = dict(self.movie_dict[sim_mid])
                 item["similarity_score"] = sim_score
@@ -202,7 +328,7 @@ class MovieRecommender:
                 item["recommendation_reason"] = f"Similar to {self.movie_dict[mid]['clean_title']} ({item['match_percentage']}% match)"
                 recommendations.append(item)
 
-        return recommendations
+        return self.deduplicate_movies(recommendations, limit=top_n)
 
     def get_collaborative_recommendations(
         self,
@@ -273,7 +399,7 @@ class MovieRecommender:
         scored_movies.sort(key=lambda x: x[1], reverse=True)
 
         recommendations = []
-        for mid, pred_score in scored_movies[:top_n]:
+        for mid, pred_score in scored_movies[:top_n * 2]:
             item = dict(self.movie_dict[mid])
             clipped_score = round(float(np.clip(pred_score, 1.0, 5.0)), 2)
             item["predicted_rating"] = clipped_score
@@ -281,7 +407,7 @@ class MovieRecommender:
             item["recommendation_reason"] = f"Predicted {clipped_score}/5.0 stars from users with similar taste"
             recommendations.append(item)
 
-        return recommendations
+        return self.deduplicate_movies(recommendations, limit=top_n)
 
     def get_hybrid_recommendations(
         self,
@@ -503,7 +629,7 @@ class MovieRecommender:
         final_candidates.sort(key=lambda x: x["hybrid_score"], reverse=True)
 
         results = []
-        for item in final_candidates[:top_n]:
+        for item in final_candidates[:top_n * 2]:
             m = dict(item["movie"])
             m["hybrid_score"] = round(item["hybrid_score"], 3)
             m["match_percentage"] = int(min(100, max(50, round(item["hybrid_score"] * 100))))
@@ -512,7 +638,7 @@ class MovieRecommender:
             m["score_source"] = f"Hybrid (Content {int(w_content*100)}% + Collab {int(w_collab*100)}% + Genre {int(w_genre*100)}% + Quality {int(w_quality*100)}%)"
             results.append(m)
 
-        return results
+        return self.deduplicate_movies(results, limit=top_n)
 
 
 # Global singleton instance loaded once

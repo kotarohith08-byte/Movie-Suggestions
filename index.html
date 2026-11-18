@@ -152,11 +152,32 @@
 
     <!-- 2. "TOP 10 CONTENTS TODAY" (Image 3 Inspiration with giant outlined rank numbers) -->
     <section class="section-container" id="top10">
-      <div class="section-header">
+      <div class="section-header" style="flex-wrap: wrap; gap: 16px;">
         <div>
           <div class="section-badge">Trending Worldwide</div>
           <h2 class="section-title"><span class="top10-title-prefix">TOP 10</span> CONTENTS TODAY</h2>
-          <p class="section-desc">Highest audience engagement, Bayesian rating weight, and algorithmic popularity across all industries.</p>
+          <p class="section-desc">Highest audience engagement, Bayesian rating weight, and algorithmic popularity across all industries. Guaranteed 10 distinct, verified movies with zero duplicates.</p>
+        </div>
+        <div class="top10-status-badge" id="top10StatusBadge" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; font-size: 0.8rem; font-weight: 600; padding: 6px 14px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+          <span id="top10CountText">10 Unique Movies (Ranks 1–10) • 0 Duplicates</span>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="top10-category-bar" style="margin-bottom: 20px;">
+        <div class="tabs-nav" id="top10Tabs" style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <button type="button" class="tab-btn active" data-category="All">🔥 All Trending</button>
+          <button type="button" class="tab-btn" data-category="Action">⚡ Action</button>
+          <button type="button" class="tab-btn" data-category="Drama">🎭 Drama</button>
+          <button type="button" class="tab-btn" data-category="Comedy">😂 Comedy</button>
+          <button type="button" class="tab-btn" data-category="Thriller">🔪 Thriller</button>
+          <button type="button" class="tab-btn" data-category="Sci-Fi">🚀 Sci-Fi</button>
+          <button type="button" class="tab-btn" data-category="Indian">🇮🇳 Indian Cinema</button>
+          <button type="button" class="tab-btn" data-category="Tollywood">🎬 Tollywood</button>
+          <button type="button" class="tab-btn" data-category="Bollywood">🌟 Bollywood</button>
+          <button type="button" class="tab-btn" data-category="Kollywood">🔥 Kollywood</button>
+          <button type="button" class="tab-btn" data-category="Global">🌍 Hollywood / Global</button>
         </div>
       </div>
 

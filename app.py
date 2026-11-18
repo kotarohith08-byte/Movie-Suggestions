@@ -361,6 +361,22 @@ def api_genres():
     })
 
 
+@app.route("/api/top10", methods=["GET"])
+def api_top10():
+    """Returns exactly 10 unique top-ranked movies across any category/genre/search with guaranteed zero duplicates."""
+    category = request.args.get("category")
+    genre = request.args.get("genre")
+    query = request.args.get("q") or request.args.get("query")
+    limit = min(50, max(1, int(request.args.get("limit", 10))))
+    movies = recommender.get_top_10_movies(category=category, genre=genre, query=query, limit=limit)
+    return jsonify({
+        "status": "success",
+        "category": category or genre or "All",
+        "count": len(movies),
+        "movies": movies
+    })
+
+
 @app.route("/api/popular", methods=["GET"])
 def api_popular():
     """Returns top popular movies."""

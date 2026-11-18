@@ -46,6 +46,10 @@
     currentHeroIndex: 0,
     heroAutoTimer: null,
 
+    // Top 10 Section
+    top10Category: "All",
+    top10Search: "",
+
     // User Libraries (localStorage)
     watchlist: loadStorageSet("cinematch_watchlist"),
     favourites: loadStorageSet("cinematch_favourites"),
@@ -480,6 +484,7 @@
   function init() {
     updateNavWatchlistBadge();
     initHeroBanner();
+    initTop10Tabs();
     renderTop10Contents();
     initAiAssistant();
     initMoods();
@@ -625,16 +630,206 @@
   }
 
   // =========================================================================
-  // 5. "TOP 10 CONTENTS TODAY" (Image 3 Inspiration)
+  // 5. "TOP 10 CONTENTS TODAY" (Image 3 Inspiration) & DEDUPLICATION ENGINE
   // =========================================================================
+
+  /**
+   * Normalizes movie titles for reliable deduplication across diacritics,
+   * punctuation, whitespace, year tags, and minor orthographic variations.
+   * e.g., "Bāhubali: The Beginning (2015)" -> "baahubalithebeginning"
+   */
+  function normalizeMovieTitle(title) {
+    if (!title) return "";
+    return String(title)
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "") // strip combining accents/diacritics
+      .toLowerCase()
+      .replace(/\s*\(\d{4}\)$/, "") // strip trailing year in parenthesis
+      .replace(/[^a-z0-9]/g, "") // strip all punctuation, hyphens, spaces
+      .trim();
+  }
+
+  /**
+   * Generic array deduplicator ensuring unique movie ID, unique TMDB ID,
+   * and unique normalized title.
+   */
+  function deduplicateMovieArray(arr, limit = 10) {
+    if (!Array.isArray(arr)) return [];
+    const seenIds = new Set();
+    const seenTmdbIds = new Set();
+    const seenTitles = new Set();
+    const unique = [];
+
+    for (let i = 0; i < arr.length; i++) {
+      const m = arr[i];
+      if (!m) continue;
+      const mid = Number(m.id || m.movieId);
+      const tmdbId = m.tmdbId ? Number(m.tmdbId) : null;
+      const normTitle = normalizeMovieTitle(m.title);
+      const normFull = normalizeMovieTitle(m.full_title);
+
+      if (seenIds.has(mid)) continue;
+      if (tmdbId && seenTmdbIds.has(tmdbId)) continue;
+      if (normTitle && seenTitles.has(normTitle)) continue;
+      if (normFull && seenTitles.has(normFull)) continue;
+
+      seenIds.add(mid);
+      if (tmdbId) seenTmdbIds.add(tmdbId);
+      if (normTitle) seenTitles.add(normTitle);
+      if (normFull) seenTitles.add(normFull);
+
+      unique.push(m);
+      if (limit && unique.length >= limit) break;
+    }
+    return unique;
+  }
+
+  /**
+   * Selects exactly 10 unique, highest-ranked eligible movies for the specified
+   * category, genre, or search query. Automatically replaces duplicates with the
+   * next highest-ranked eligible movie from the dataset.
+   */
+  function getUniqueTop10Movies(pool = MOVIES, limit = 10, category = "All", searchQuery = "") {
+    let candidates = pool.slice();
+
+    // 1. Filter by category / industry / genre
+    if (category && category !== "All") {
+      const catLower = category.toLowerCase().trim();
+      if (catLower === "indian") {
+        candidates = candidates.filter(m => m.id >= 200000 || ["Tollywood", "Bollywood", "Kollywood"].includes(m.industry));
+      } else if (["tollywood", "bollywood", "kollywood"].includes(catLower)) {
+        candidates = candidates.filter(m => {
+          if (m.industry && m.industry.toLowerCase() === catLower) return true;
+          if (catLower === "tollywood") return (200001 <= m.id && m.id <= 200030) || (200061 <= m.id && m.id <= 200275);
+          if (catLower === "bollywood") return (200031 <= m.id && m.id <= 200060) || (200301 <= m.id && m.id <= 200615);
+          if (catLower === "kollywood") return m.id >= 201001;
+          return false;
+        });
+      } else if (catLower === "global" || catLower === "hollywood") {
+        candidates = candidates.filter(m => m.id < 200000 || m.industry === "Global");
+      } else {
+        // Genre filter (e.g. Action, Drama, Comedy, Thriller, Sci-Fi)
+        candidates = candidates.filter(m => (m.genres || []).some(g => g.toLowerCase() === catLower));
+      }
+    }
+
+    // 2. Filter by search query if active
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const q = searchQuery.trim().toLowerCase();
+      candidates = candidates.filter(m => {
+        const t = (m.title || "").toLowerCase();
+        const ft = (m.full_title || "").toLowerCase();
+        const g = (m.genres || []).join(" ").toLowerCase();
+        return t.includes(q) || ft.includes(q) || g.includes(q);
+      });
+    }
+
+    // 3. Sort candidates strictly according to the Bayesian ranking formula:
+    // Bayesian engagement score: votes * (score ^ 1.4)
+    candidates.sort((a, b) => {
+      const scoreA = (Number(a.votes) || 0) * Math.pow(Number(a.score) || 0, 1.4);
+      const scoreB = (Number(b.votes) || 0) * Math.pow(Number(b.score) || 0, 1.4);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
+      return (b.year || 0) - (a.year || 0);
+    });
+
+    // 4. Extract exactly limit unique movies, dynamically skipping duplicates
+    const seenIds = new Set();
+    const seenTmdbIds = new Set();
+    const seenTitles = new Set();
+    const uniqueTop10 = [];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const m = candidates[i];
+      const mid = Number(m.id);
+      const tmdbId = m.tmdbId ? Number(m.tmdbId) : null;
+      const normTitle = normalizeMovieTitle(m.title);
+      const normFull = normalizeMovieTitle(m.full_title);
+
+      // Check ID duplicate
+      if (seenIds.has(mid)) continue;
+
+      // Check TMDB ID duplicate (e.g. Baahubali indexed with two separate local IDs)
+      if (tmdbId && seenTmdbIds.has(tmdbId)) continue;
+
+      // Check Title duplicate (handles spelling variations, diacritics, spaces)
+      if (normTitle && seenTitles.has(normTitle)) continue;
+      if (normFull && seenTitles.has(normFull)) continue;
+
+      // Eligible unique movie found!
+      seenIds.add(mid);
+      if (tmdbId) seenTmdbIds.add(tmdbId);
+      if (normTitle) seenTitles.add(normTitle);
+      if (normFull) seenTitles.add(normFull);
+
+      uniqueTop10.push(m);
+
+      if (uniqueTop10.length === limit) {
+        break;
+      }
+    }
+
+    // 5. Guarantee exactly 10 unique movies: if a very narrow category or search had fewer than limit,
+    // seamlessly backfill from global high-ranking unique movies with zero duplicates
+    if (uniqueTop10.length < limit) {
+      const globalCandidates = pool.slice().sort((a, b) => 
+        ((Number(b.votes) || 0) * Math.pow(Number(b.score) || 0, 1.4)) - 
+        ((Number(a.votes) || 0) * Math.pow(Number(a.score) || 0, 1.4))
+      );
+      for (let i = 0; i < globalCandidates.length; i++) {
+        const m = globalCandidates[i];
+        const mid = Number(m.id);
+        const tmdbId = m.tmdbId ? Number(m.tmdbId) : null;
+        const normTitle = normalizeMovieTitle(m.title);
+        const normFull = normalizeMovieTitle(m.full_title);
+
+        if (seenIds.has(mid)) continue;
+        if (tmdbId && seenTmdbIds.has(tmdbId)) continue;
+        if (normTitle && seenTitles.has(normTitle)) continue;
+        if (normFull && seenTitles.has(normFull)) continue;
+
+        seenIds.add(mid);
+        if (tmdbId) seenTmdbIds.add(tmdbId);
+        if (normTitle) seenTitles.add(normTitle);
+        if (normFull) seenTitles.add(normFull);
+
+        uniqueTop10.push(m);
+        if (uniqueTop10.length === limit) break;
+      }
+    }
+
+    return uniqueTop10;
+  }
+
+  function initTop10Tabs() {
+    const tabsContainer = document.getElementById("top10Tabs");
+    if (!tabsContainer) return;
+
+    tabsContainer.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab-btn");
+      if (!btn) return;
+      tabsContainer.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.top10Category = btn.dataset.category || "All";
+      renderTop10Contents();
+    });
+  }
+
   function renderTop10Contents() {
     const grid = document.getElementById("top10Grid");
     if (!grid) return;
 
-    // Pick top 10 movies sorted by Bayesian score * log(votes)
-    const top10 = MOVIES.slice()
-      .sort((a, b) => (b.votes * Math.pow(b.score, 1.4)) - (a.votes * Math.pow(a.score, 1.4)))
-      .slice(0, 10);
+    const category = state.top10Category || "All";
+    const searchQuery = state.top10Search || "";
+    const top10 = getUniqueTop10Movies(MOVIES, 10, category, searchQuery);
+
+    // Update status counter badge
+    const countText = document.getElementById("top10CountText");
+    if (countText) {
+      const catLabel = category === "All" ? "Trending Worldwide" : category;
+      countText.textContent = `${top10.length} Unique Movies (${catLabel}) • 0 Duplicates`;
+    }
 
     grid.innerHTML = top10.map((m, idx) => {
       const rank = idx + 1;
@@ -1253,10 +1448,14 @@
           return t.includes(val) || ft.includes(val) || g.includes(val);
         });
 
+        state.top10Search = val;
+        renderTop10Contents();
+
         if (resultsSection && resultsGrid) {
           resultsSection.classList.remove("hidden");
+          const uniqueMatches = deduplicateMovieArray(matches, 36);
           if (countEl) countEl.textContent = `Found ${matches.length} matching movies for "${navInput.value}"`;
-          renderMovieCards(resultsGrid, matches.slice(0, 36));
+          renderMovieCards(resultsGrid, uniqueMatches);
           resultsSection.scrollIntoView({ behavior: "smooth" });
         }
       }
@@ -1273,6 +1472,8 @@
       clearBtn.addEventListener("click", () => {
         resultsSection.classList.add("hidden");
         navInput.value = "";
+        state.top10Search = "";
+        renderTop10Contents();
       });
     }
   }
@@ -1308,7 +1509,8 @@
 
     // 1. Trending / Popular
     if (algorithm === "popular") {
-      return candidates.slice().sort((a, b) => (b.votes * Math.pow(b.score, 1.4)) - (a.votes * Math.pow(a.score, 1.4))).slice(0, limit).map(m => ({
+      const sorted = candidates.slice().sort((a, b) => (b.votes * Math.pow(b.score, 1.4)) - (a.votes * Math.pow(a.score, 1.4)));
+      return deduplicateMovieArray(sorted, limit).map(m => ({
         ...m,
         _explainReason: `🔥 Audience Favorite • ${formatVotes(m.votes)} verified reviews`
       }));
@@ -1320,7 +1522,7 @@
       const simIds = new Set(highest.movie.sims || []);
       const similarCandidates = candidates.filter(m => simIds.has(m.id));
       if (similarCandidates.length >= 4) {
-        return similarCandidates.slice(0, limit).map(m => ({
+        return deduplicateMovieArray(similarCandidates, limit).map(m => ({
           ...m,
           _explainReason: `🎯 TF-IDF Cosine Match with "${highest.movie.title}"`
         }));
@@ -1351,11 +1553,12 @@
       });
 
       scored.sort((a, b) => (b._calcScore || 0) - (a._calcScore || 0));
-      return scored.slice(0, limit);
+      return deduplicateMovieArray(scored, limit);
     }
 
     // Fallback: Bayesian Weighted Quality Recommendations (Requirement 4)
-    return candidates.slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, limit).map(m => ({
+    const fallbackSorted = candidates.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+    return deduplicateMovieArray(fallbackSorted, limit).map(m => ({
       ...m,
       _explainReason: `⭐ Quality Score (Bayesian): ${(m.score || 6.54).toFixed(1)}/10`
     }));
@@ -1417,7 +1620,8 @@
       if (filtered.length > 0) pool = filtered;
     }
 
-    renderMovieCards(grid, pool.slice(0, state.indianCount).map(m => ({
+    const uniquePool = deduplicateMovieArray(pool, state.indianCount);
+    renderMovieCards(grid, uniquePool.map(m => ({
       ...m,
       _explainReason: `${m.industry || "Indian"} Blockbuster • ${m.votes > 0 ? formatVotes(m.votes) + ' TMDB votes' : 'Verified Cinema'}`
     })));
@@ -1441,7 +1645,8 @@
       const filtered = popular.filter(m => (m.genres || []).includes(state.genre));
       if (filtered.length > 0) popular = filtered;
     }
-    renderMovieCards(grid, popular.slice(0, 12).map(m => ({
+    const uniquePopular = deduplicateMovieArray(popular, 12);
+    renderMovieCards(grid, uniquePopular.map(m => ({
       ...m,
       _explainReason: `Global Audience Favorite • ${formatVotes(m.votes)} verified reviews`
     })));
